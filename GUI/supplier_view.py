@@ -19,16 +19,16 @@ class SupplierView(ttk.Frame):
         left.columnconfigure(0, weight=1)
         left.rowconfigure(0, weight=1)
 
-        columns = ("id", "name", "region", "contact")
+        columns = ("id", "name", "region", "rating")
         tree = ttk.Treeview(left, columns=columns, show="headings", height=18)
         tree.heading("id", text="ID")
         tree.heading("name", text="名称")
-        tree.heading("region", text="地区")
-        tree.heading("contact", text="联系方式")
+        tree.heading("region", text="地理位置")
+        tree.heading("rating", text="平均评分")
         tree.column("id", width=60, anchor="center")
         tree.column("name", width=180)
-        tree.column("region", width=100, anchor="center")
-        tree.column("contact", width=160, anchor="center")
+        tree.column("region", width=150, anchor="center")
+        tree.column("rating", width=100, anchor="center")
         tree.grid(row=0, column=0, sticky="nsew")
 
         scrollbar = ttk.Scrollbar(left, orient="vertical", command=tree.yview)
@@ -41,7 +41,7 @@ class SupplierView(ttk.Frame):
         right.grid(row=0, column=1, sticky="nsew")
         right.columnconfigure(1, weight=1)
 
-        labels = ["名称", "地区", "联系方式"]
+        labels = ["名称", "地理位置"]
         self.entries = {}
         for row, label in enumerate(labels):
             ttk.Label(right, text=label).grid(row=row, column=0, sticky="w", pady=6)
@@ -50,7 +50,7 @@ class SupplierView(ttk.Frame):
             self.entries[label] = entry
 
         ttk.Button(right, text="新增供应商", command=self.add_supplier).grid(
-            row=3, column=0, columnspan=2, sticky="ew", pady=(10, 0)
+            row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0)
         )
 
     def refresh(self):
@@ -64,19 +64,22 @@ class SupplierView(ttk.Frame):
                     supplier["id"],
                     supplier["name"],
                     supplier["region"],
-                    supplier["contact_info"],
+                    f'{supplier.get("avg_rating", 0):.2f}',
                 ),
             )
 
     def add_supplier(self):
         name = self.entries["名称"].get().strip()
-        region = self.entries["地区"].get().strip()
-        contact = self.entries["联系方式"].get().strip()
-        if not all([name, region, contact]):
+        region = self.entries["地理位置"].get().strip()
+        if not all([name, region]):
             messagebox.showwarning("提示", "请填写完整信息")
             return
 
-        self.app.store.add_supplier(name, region, contact)
+        try:
+            self.app.store.add_supplier(name, region)
+        except Exception as exc:
+            messagebox.showerror("错误", str(exc))
+            return
         for entry in self.entries.values():
             entry.delete(0, "end")
         self.app.refresh_views("已添加供应商")

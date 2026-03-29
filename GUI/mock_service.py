@@ -5,11 +5,13 @@ from datetime import datetime
 
 
 class DemoStore:
+    mode_name = "演示数据"
+
     def __init__(self):
         self.customer = {"id": 1, "name": "演示用户"}
         self.suppliers = [
-            {"id": 1, "name": "晨光数码", "region": "深圳", "contact_info": "0755-10086"},
-            {"id": 2, "name": "北辰家居", "region": "上海", "contact_info": "021-889900"},
+            {"id": 1, "name": "晨光数码", "region": "深圳", "avg_rating": 4.7},
+            {"id": 2, "name": "北辰家居", "region": "上海", "avg_rating": 4.4},
         ]
         self.products = [
             {
@@ -46,12 +48,12 @@ class DemoStore:
     def get_all_suppliers(self):
         return deepcopy(self.suppliers)
 
-    def add_supplier(self, name, region, contact_info):
+    def add_supplier(self, name, region, contact_info=None):
         supplier = {
             "id": self.next_supplier_id,
             "name": name,
             "region": region,
-            "contact_info": contact_info,
+            "avg_rating": 0,
         }
         self.next_supplier_id += 1
         self.suppliers.append(supplier)

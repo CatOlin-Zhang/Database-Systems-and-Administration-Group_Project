@@ -71,7 +71,7 @@ class ProductView(ttk.Frame):
             entry.grid(row=row, column=1, sticky="ew", pady=6)
             self.entries[label] = entry
 
-        ttk.Label(right, text="标签用英文逗号分隔", foreground="#666666").grid(
+        ttk.Label(right, text="标签用英文逗号分隔，最多 3 个", foreground="#666666").grid(
             row=5, column=0, columnspan=2, sticky="w", pady=(0, 10)
         )
 
@@ -129,7 +129,14 @@ class ProductView(ttk.Frame):
             return
 
         tags_list = [tag.strip() for tag in tags_text.split(",") if tag.strip()]
-        self.app.store.add_product(name, price_value, stock_value, tags_list, supplier_id)
+        if len(tags_list) > 3:
+            messagebox.showerror("错误", "每个商品最多 3 个标签")
+            return
+        try:
+            self.app.store.add_product(name, price_value, stock_value, tags_list, supplier_id)
+        except Exception as exc:
+            messagebox.showerror("错误", str(exc))
+            return
         for entry in self.entries.values():
             entry.delete(0, "end")
         self.app.refresh_views("已添加商品")

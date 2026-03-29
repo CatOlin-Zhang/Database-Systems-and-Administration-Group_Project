@@ -81,7 +81,7 @@ class CartView(ttk.Frame):
     def checkout(self):
         try:
             self.app.store.place_order(self.app.store.customer["id"])
-        except ValueError as exc:
+        except Exception as exc:
             messagebox.showerror("错误", str(exc))
             return
         self.app.refresh_views("订单已创建")

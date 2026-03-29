@@ -93,7 +93,7 @@ class SearchView(ttk.Frame):
             quantity = int(self.qty_var.get())
             product_id = int(self.tree.item(selected[0], "values")[0])
             self.app.store.add_to_cart(product_id, quantity)
-        except ValueError as exc:
+        except Exception as exc:
             messagebox.showerror("错误", str(exc))
             return
 

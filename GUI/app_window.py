@@ -1,12 +1,14 @@
 import tkinter as tk
 from tkinter import ttk
 
+from config import USE_DEMO_DATA
 from GUI.cart_view import CartView
 from GUI.mock_service import DemoStore
 from GUI.order_history_view import OrderHistoryView
 from GUI.product_view import ProductView
 from GUI.search_view import SearchView
 from GUI.supplier_view import SupplierView
+from logic.app_service import DatabaseStore
 
 
 class AppWindow(tk.Tk):
@@ -16,7 +18,7 @@ class AppWindow(tk.Tk):
         self.geometry("1180x760")
         self.minsize(1080, 680)
 
-        self.store = DemoStore()
+        self.store = self._build_store()
         self.status_var = tk.StringVar(value="就绪")
         self.current_page = None
         self.pages = {}
@@ -46,9 +48,10 @@ class AppWindow(tk.Tk):
                 fill="x", pady=6
             )
 
+        customer_name = self.store.customer.get("name", "演示用户")
         info = ttk.Label(
             nav,
-            text="当前客户：演示用户\n数据来源：本地内存",
+            text=f"当前客户：{customer_name}\n运行模式：{self.store.mode_name}",
             justify="left",
             foreground="#555555",
         )
@@ -88,6 +91,15 @@ class AppWindow(tk.Tk):
             if hasattr(frame, "refresh"):
                 frame.refresh()
         self.status_var.set(message)
+
+    @staticmethod
+    def _build_store():
+        if USE_DEMO_DATA:
+            return DemoStore()
+        try:
+            return DatabaseStore()
+        except Exception:
+            return DemoStore()
 
     @staticmethod
     def _page_title(page_key):

@@ -131,7 +131,7 @@ class OrderHistoryView(ttk.Frame):
         item_id = int(self.detail_tree.item(selected[0], "values")[0])
         try:
             self.app.store.modify_order_action(self.current_order_id, "remove", item_id)
-        except ValueError as exc:
+        except Exception as exc:
             messagebox.showerror("错误", str(exc))
             return
         self.app.refresh_views("订单已更新")
@@ -142,7 +142,7 @@ class OrderHistoryView(ttk.Frame):
             return
         try:
             self.app.store.modify_order_action(self.current_order_id, "cancel")
-        except ValueError as exc:
+        except Exception as exc:
             messagebox.showerror("错误", str(exc))
             return
         self.app.refresh_views("订单已取消")
