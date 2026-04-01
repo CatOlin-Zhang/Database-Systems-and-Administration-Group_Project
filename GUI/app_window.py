@@ -1,6 +1,7 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
+# 假设这些是你的其他导入
 from config import USE_DEMO_DATA
 from GUI.cart_view import CartView
 from GUI.mock_service import DemoStore
@@ -9,130 +10,249 @@ from GUI.product_view import ProductView
 from GUI.search_view import SearchView
 from GUI.supplier_view import SupplierView
 from logic.app_service import DatabaseStore
+from GUI.entry_view import EntryView
 
 
 class AppWindow(tk.Tk):
     def __init__(self):
-        # 初始化主窗口
         super().__init__()
         self.title("电商平台演示")
         self.geometry("1180x760")
         self.minsize(1080, 680)
 
-        # 初始化数据存储层（根据配置选择演示模式或数据库模式）
         self.store = self._build_store()
-        # 状态栏变量
         self.status_var = tk.StringVar(value="就绪")
-        # 当前页面标识
         self.current_page = None
-        # 存储所有页面视图的字典
         self.pages = {}
 
-        # 构建界面布局
+        # 页面分组定义
+        self.management_pages = ["supplier", "product"]
+        self.business_pages = ["search", "cart", "order"]
+
+        # 初始化用户数据库
+        self.users_db = self.get_user_data()
+        self.current_user = None
+        self.current_supplier_id = None  # 用于记录当前登录的供货商ID
+
         self._build_layout()
-        # 默认显示供应商管理页面
-        self.show_page("supplier")
+        self.show_entry_view()
+
+    def get_user_data(self):
+        """
+        【数据源】包含所有用户、供应商账号密码及角色的字典
+        注意：supplier 增加了 'id' 字段，用于数据过滤
+        """
+        return {
+            # --- 管理员账号 ---
+            "admin": {
+                "password": "123456",
+                "role": "admin",
+                "name": "系统管理员"
+            },
+            # --- 普通客户账号 ---
+            "user1": {
+                "password": "123456",
+                "role": "client",
+                "name": "普通客户"
+            },
+            "user2": {
+                "password": "123456",
+                "role": "client",
+                "name": "普通客户"
+            },
+            # --- 供货商账号 (增加了 id) ---
+            "sup1": {
+                "password": "123456",
+                "role": "supplier",
+                "name": "晨光数码",
+                "id": 1  # 对应数据库中的 supplier_id = 1
+            },
+            "sup2": {
+                "password": "888888",
+                "role": "supplier",
+                "name": "北辰家居",
+                "id": 2  # 对应数据库中的 supplier_id = 2
+            }
+        }
+
+    def validate_login(self, username, password):
+        """
+        【登录验证】验证登录并跳转
+        """
+        user_info = self.users_db.get(username)
+
+        # 检查用户是否存在且密码正确
+        if user_info and user_info["password"] == password:
+            self.current_user = user_info
+            # 登录成功，根据角色跳转
+            self.switch_mode(user_info["role"], user_info)
+            return True
+        return False
 
     def _build_layout(self):
-        # 配置主窗口的网格布局权重，使右侧内容区域可自适应拉伸
-        self.columnconfigure(1, weight=1)
-        self.rowconfigure(0, weight=1)
+        # --- 左侧导航栏 (拆分为三个独立的侧边栏) ---
 
-        # --- 左侧导航栏 ---
-        nav = ttk.Frame(self, padding=16)
-        nav.grid(row=0, column=0, sticky="ns")
+        # 1. 管理端侧边栏 (Admin)
+        self.nav_admin = ttk.Frame(self, padding=16)
+        ttk.Label(self.nav_admin, text="后台管理", font=("Microsoft YaHei UI", 18, "bold")).pack(anchor="w", pady=(0, 18))
+        ttk.Button(self.nav_admin, text="供应商管理", command=lambda: self.show_page("supplier"), width=18).pack(fill="x", pady=4)
+        ttk.Button(self.nav_admin, text="商品目录", command=lambda: self.show_page("product"), width=18).pack(fill="x", pady=4)
+        ttk.Button(self.nav_admin, text="退出登录", command=self.logout).pack(side="bottom", fill="x", pady=(20, 0))
 
-        # 导航栏标题
-        title = ttk.Label(nav, text="电商平台", font=("Microsoft YaHei UI", 18, "bold"))
-        title.pack(anchor="w", pady=(0, 18))
+        # 2. 业务端侧边栏 (Client)
+        self.nav_client = ttk.Frame(self, padding=16)
+        ttk.Label(self.nav_client, text="业务前台", font=("Microsoft YaHei UI", 18, "bold")).pack(anchor="w", pady=(0, 18))
+        ttk.Button(self.nav_client, text="商品搜索", command=lambda: self.show_page("search"), width=18).pack(fill="x", pady=4)
+        ttk.Button(self.nav_client, text="购物车", command=lambda: self.show_page("cart"), width=18).pack(fill="x", pady=4)
+        ttk.Button(self.nav_client, text="订单历史", command=lambda: self.show_page("order"), width=18).pack(fill="x", pady=4)
+        ttk.Button(self.nav_client, text="退出登录", command=self.logout).pack(side="bottom", fill="x", pady=(20, 0))
 
-        # 定义导航按钮列表
-        buttons = [
-            ("供应商管理", "supplier"),
-            ("商品目录", "product"),
-            ("商品搜索", "search"),
-            ("购物车", "cart"),
-            ("订单历史", "order"),
-        ]
-        # 循环创建导航按钮
-        for text, key in buttons:
-            ttk.Button(nav, text=text, command=lambda page=key: self.show_page(page), width=18).pack(
-                fill="x", pady=6
-            )
-
-        # 显示当前客户信息和运行模式
-        customer_name = self.store.customer.get("name", "演示用户")
-        info = ttk.Label(
-            nav,
-            text=f"当前客户：{customer_name}\n运行模式：{self.store.mode_name}",
-            justify="left",
-            foreground="#555555",
-        )
-        info.pack(anchor="w", pady=(18, 0))
+        # 3. 供货商侧边栏 (Supplier)
+        self.nav_supplier = ttk.Frame(self, padding=16)
+        ttk.Label(self.nav_supplier, text="供货商 Portal", font=("Microsoft YaHei UI", 18, "bold"), foreground="#d35400").pack(anchor="w", pady=(0, 18))
+        ttk.Button(self.nav_supplier, text="我的商品", command=lambda: self.show_page("product"), width=18).pack(fill="x", pady=4)
+        ttk.Button(self.nav_supplier, text="订单处理", command=lambda: self.show_page("order"), width=18).pack(fill="x", pady=4)
+        ttk.Button(self.nav_supplier, text="退出登录", command=self.logout).pack(side="bottom", fill="x", pady=(20, 0))
 
         # --- 右侧内容区域 ---
         content = ttk.Frame(self, padding=(0, 16, 16, 16))
         content.grid(row=0, column=1, sticky="nsew")
         content.columnconfigure(0, weight=1)
         content.rowconfigure(0, weight=1)
-        self.content = content
+
+        # 容器定义
+        self.management_container = ttk.Frame(content)
+        self.management_container.grid(row=0, column=0, sticky="nsew")
+        self.management_container.columnconfigure(0, weight=1)
+        self.management_container.rowconfigure(0, weight=1)
+
+        self.business_container = ttk.Frame(content)
+        self.business_container.grid(row=0, column=0, sticky="nsew")
+        self.business_container.columnconfigure(0, weight=1)
+        self.business_container.rowconfigure(0, weight=1)
+
+        self.entry_container = ttk.Frame(content)
+        self.entry_container.grid(row=0, column=0, sticky="nsew")
+        self.entry_container.columnconfigure(0, weight=1)
+        self.entry_container.rowconfigure(0, weight=1)
 
         # --- 底部状态栏 ---
         status = ttk.Label(self, textvariable=self.status_var, anchor="w", padding=(16, 8))
         status.grid(row=1, column=0, columnspan=2, sticky="ew")
 
-        # 初始化所有页面视图并添加到内容区域
-        page_builders = {
-            "supplier": SupplierView,
-            "product": ProductView,
-            "search": SearchView,
-            "cart": CartView,
-            "order": OrderHistoryView,
-        }
-        for key, builder in page_builders.items():
-            frame = builder(content, self)
-            frame.grid(row=0, column=0, sticky="nsew")
-            self.pages[key] = frame
+        # 初始化视图
+        self.pages["supplier"] = SupplierView(self.management_container, self)
+        self.pages["product"] = ProductView(self.management_container, self)
+        self.pages["search"] = SearchView(self.business_container, self)
+        self.pages["cart"] = CartView(self.business_container, self)
+        self.pages["order"] = OrderHistoryView(self.business_container, self)
+
+        self.entry_view = EntryView(self.entry_container, self)
+
+        for page in self.pages.values():
+            page.grid(row=0, column=0, sticky="nsew")
+
+    def show_entry_view(self):
+        """显示登录界面，隐藏所有侧边栏"""
+        # 隐藏所有侧边栏
+        self.nav_admin.grid_forget()
+        self.nav_client.grid_forget()
+        self.nav_supplier.grid_forget()
+
+        # 隐藏功能容器
+        self.management_container.grid_forget()
+        self.business_container.grid_forget()
+
+        # 显示登录容器
+        self.entry_container.grid(row=0, column=0, sticky="nsew")
+        self.status_var.set("请登录系统")
+
+    def switch_mode(self, role, user_info):
+        """根据角色切换界面"""
+        # 隐藏登录容器
+        self.entry_container.grid_forget()
+
+        # 重置供货商ID
+        self.current_supplier_id = None
+
+        # 根据角色显示对应的侧边栏和内容容器
+        if role == "admin":
+            self.nav_admin.grid(row=0, column=0, sticky="ns")
+            self.nav_client.grid_forget()
+            self.nav_supplier.grid_forget()
+            self.show_page("supplier")  # 管理员默认看供应商管理
+
+        elif role == "client":
+            self.nav_admin.grid_forget()
+            self.nav_client.grid(row=0, column=0, sticky="ns")
+            self.nav_supplier.grid_forget()
+            self.show_page("search")  # 客户默认看搜索
+
+        elif role == "supplier":
+            self.nav_admin.grid_forget()
+            self.nav_client.grid_forget()
+            self.nav_supplier.grid(row=0, column=0, sticky="ns")
+            # 【关键】记录当前供货商的ID，用于后续数据过滤
+            self.current_supplier_id = user_info.get("id")
+            self.show_page("product")  # 供货商默认看商品管理
+
+    def logout(self):
+        """退出登录"""
+        self.current_user = None
+        self.current_supplier_id = None
+        self.show_entry_view()
 
     def show_page(self, page_key):
-        # 切换到指定页面
+        # 确定页面所属容器
+        if page_key in self.management_pages:
+            active_container = self.management_container
+            inactive_container = self.business_container
+        else:
+            active_container = self.business_container
+            inactive_container = self.management_container
+
+        inactive_container.grid_forget()
+        active_container.grid(row=0, column=0, sticky="nsew")
+
         frame = self.pages[page_key]
-        # 将指定页面提升到最上层
         frame.tkraise()
+
         self.current_page = page_key
-        # 如果页面有刷新方法，则调用刷新
-        if hasattr(frame, "refresh"):
+
+        # 【关键逻辑】如果是供货商访问商品页面，强制传入供货商ID进行过滤
+        if page_key == "product" and self.current_supplier_id:
+            if hasattr(frame, "refresh_by_supplier"):
+                # 假设 ProductView 有一个专门按供货商过滤刷新的方法
+                frame.refresh_by_supplier(self.current_supplier_id)
+            else:
+                # 如果没有专门方法，就调用普通刷新（需要在 ProductView 内部处理逻辑）
+                frame.refresh()
+        elif hasattr(frame, "refresh"):
             frame.refresh()
-        # 更新状态栏信息
-        self.status_var.set("当前页面：" + self._page_title(page_key))
+
+        # 状态栏显示当前用户和页面
+        user_name = self.current_user['name'] if self.current_user else "未知"
+        self.status_var.set(f"当前用户：{user_name} | 页面：{self._page_title(page_key)}")
 
     def refresh_views(self, message="已更新"):
-        # 刷新所有视图（通常在数据变更后调用）
         for frame in self.pages.values():
             if hasattr(frame, "refresh"):
                 frame.refresh()
-        # 更新状态栏消息
         self.status_var.set(message)
 
     @staticmethod
     def _build_store():
-        # 根据配置构建数据存储对象
         if USE_DEMO_DATA:
             return DemoStore()
         try:
             return DatabaseStore()
         except Exception:
-            # 如果数据库连接失败，回退到演示模式
             return DemoStore()
 
     @staticmethod
     def _page_title(page_key):
-        # 将页面键转换为中文标题
         mapping = {
-            "supplier": "供应商管理",
-            "product": "商品目录",
-            "search": "商品搜索",
-            "cart": "购物车",
-            "order": "订单历史",
+            "supplier": "供应商管理", "product": "商品目录",
+            "search": "商品搜索", "cart": "购物车", "order": "订单历史",
         }
         return mapping[page_key]

@@ -51,7 +51,7 @@ class DemoStore:
         self.next_order_id = 1
 
     def get_all_suppliers(self):
-        # 获取所有供应商的深拷贝副本，防止外部修改内部数据
+        # 获取所有供应商的深拷贝副本
         return deepcopy(self.suppliers)
 
     def add_supplier(self, name, region, contact_info=None):
@@ -66,13 +66,25 @@ class DemoStore:
         self.suppliers.append(supplier)
         return deepcopy(supplier)
 
+    # --- 【新增/修改】核心方法：支持按供货商过滤商品 ---
     def get_products_by_supplier(self, supplier_id=None):
-        # 根据供应商ID获取商品列表，若无ID则返回所有商品
+        """
+        获取商品列表。
+        如果传入 supplier_id，则只返回该供货商的商品（用于供货商登录）。
+        如果不传，则返回所有商品（用于管理员或客户）。
+        """
         rows = []
         for product in self.products:
-            if supplier_id and product["supplier_id"] != supplier_id:
+            # 如果指定了供货商ID，且当前商品不属于该供货商，则跳过
+            if supplier_id is not None and product["supplier_id"] != supplier_id:
                 continue
-            rows.append(self._product_view(product))
+
+            # 构建视图数据（包含供应商名称）
+            supplier = self._find_supplier(product["supplier_id"])
+            row = deepcopy(product)
+            row["supplier_name"] = supplier["name"] if supplier else "未知供应商"
+            row["tags_text"] = ", ".join(product["tags"])
+            rows.append(row)
         return rows
 
     def add_product(self, name, price, stock, tags_list, supplier_id):
@@ -83,14 +95,20 @@ class DemoStore:
             "price": float(price),
             "stock": int(stock),
             "tags": tags_list,
-            "supplier_id": supplier_id,
+            "supplier_id": supplier_id,  # 确保关联供货商ID
         }
         self.next_product_id += 1
         self.products.append(product)
-        return self._product_view(product)
+
+        # 返回视图数据
+        supplier = self._find_supplier(supplier_id)
+        row = deepcopy(product)
+        row["supplier_name"] = supplier["name"] if supplier else "未知供应商"
+        row["tags_text"] = ", ".join(product["tags"])
+        return row
 
     def search_products(self, keyword="", selected_tags=None):
-        # 根据关键词和标签搜索商品
+        # 客户搜索商品（只看全量数据，不关心供货商ID）
         keyword = keyword.strip().lower()
         selected_tags = [tag.strip().lower() for tag in (selected_tags or []) if tag.strip()]
 
@@ -103,7 +121,12 @@ class DemoStore:
             # 检查是否包含所有选中的标签
             tags_ok = not selected_tags or any(tag in tags_text for tag in selected_tags)
             if keyword_ok and tags_ok:
-                results.append(self._product_view(product))
+                # 搜索结果也需要格式化
+                supplier = self._find_supplier(product["supplier_id"])
+                row = deepcopy(product)
+                row["supplier_name"] = supplier["name"] if supplier else "未知供应商"
+                row["tags_text"] = ", ".join(product["tags"])
+                results.append(row)
         return results
 
     def add_to_cart(self, product_id, quantity):
@@ -258,14 +281,6 @@ class DemoStore:
             return deepcopy(order)
 
         raise ValueError("未知操作")
-
-    def _product_view(self, product):
-        # 将商品数据转换为视图模型，添加供应商名称和标签文本
-        supplier = self._find_supplier(product["supplier_id"])
-        row = deepcopy(product)
-        row["supplier_name"] = supplier["name"] if supplier else "未知供应商"
-        row["tags_text"] = ", ".join(product["tags"])
-        return row
 
     def _find_supplier(self, supplier_id):
         # 根据ID查找供应商
