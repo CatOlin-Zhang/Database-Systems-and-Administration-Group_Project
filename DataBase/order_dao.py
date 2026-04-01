@@ -104,6 +104,33 @@ def get_orders_by_customer(customer_id, conn=None):
             conn.close()
 
 
+def get_orders_by_supplier(vendor_id, conn=None):
+    own_conn = conn is None
+    conn = conn or get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT DISTINCT
+                    o.order_id,
+                    o.customer_id,
+                    o.order_date,
+                    o.total_price,
+                    o.order_status
+                FROM orders o
+                JOIN order_items oi ON oi.order_id = o.order_id
+                JOIN products p ON p.product_id = oi.product_id
+                WHERE p.vendor_id = %s
+                ORDER BY o.order_date DESC, o.order_id DESC
+                """,
+                (vendor_id,),
+            )
+            return cursor.fetchall()
+    finally:
+        if own_conn:
+            conn.close()
+
+
 def get_order_details(order_id, conn=None):
     # 标记连接所有权
     own_conn = conn is None
@@ -127,6 +154,35 @@ def get_order_details(order_id, conn=None):
                 ORDER BY oi.item_id
                 """,
                 (order_id,),
+            )
+            return cursor.fetchall()
+    finally:
+        if own_conn:
+            conn.close()
+
+
+def get_order_details_by_supplier(order_id, vendor_id, conn=None):
+    own_conn = conn is None
+    conn = conn or get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    oi.item_id,
+                    oi.order_id,
+                    oi.product_id,
+                    p.product_name AS name,
+                    oi.buy_quantity AS quantity,
+                    oi.unit_price AS price_at_purchase,
+                    oi.buy_quantity * oi.unit_price AS subtotal
+                FROM order_items oi
+                JOIN products p ON p.product_id = oi.product_id
+                WHERE oi.order_id = %s
+                  AND p.vendor_id = %s
+                ORDER BY oi.item_id
+                """,
+                (order_id, vendor_id),
             )
             return cursor.fetchall()
     finally:

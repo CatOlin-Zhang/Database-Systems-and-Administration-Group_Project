@@ -5,18 +5,15 @@ from datetime import datetime
 
 
 class DemoStore:
-    # 定义运行模式名称，用于界面显示
     mode_name = "演示数据"
 
     def __init__(self):
-        # 初始化演示数据
-        self.customer = {"id": 1, "name": "演示用户"}
-        # 模拟供应商列表
+        self.default_customer = {"id": 1, "name": "演示用户1"}
+        self.customer = deepcopy(self.default_customer)
         self.suppliers = [
             {"id": 1, "name": "晨光数码", "region": "深圳", "avg_rating": 4.7},
             {"id": 2, "name": "北辰家居", "region": "上海", "avg_rating": 4.4},
         ]
-        # 模拟商品列表
         self.products = [
             {
                 "id": 1,
@@ -43,19 +40,53 @@ class DemoStore:
                 "supplier_id": 2,
             },
         ]
-        # 初始化购物车、订单列表及自增ID计数器
         self.cart = []
-        self.orders = []
+        self.orders = [
+            {
+                "id": 1,
+                "customer_id": 1,
+                "order_date": "2026-03-30 10:30",
+                "status": "待发货",
+                "total_price": 388.0,
+                "items": [
+                    {
+                        "item_id": 1,
+                        "product_id": 1,
+                        "name": "机械键盘",
+                        "quantity": 1,
+                        "price_at_purchase": 299.0,
+                        "subtotal": 299.0,
+                    },
+                    {
+                        "item_id": 2,
+                        "product_id": 3,
+                        "name": "书桌台灯",
+                        "quantity": 1,
+                        "price_at_purchase": 89.0,
+                        "subtotal": 89.0,
+                    },
+                ],
+            }
+        ]
         self.next_supplier_id = 3
         self.next_product_id = 4
-        self.next_order_id = 1
+        self.next_order_id = 2
+
+    def reset_session(self):
+        self.cart.clear()
+        self.customer = deepcopy(self.default_customer)
+
+    def set_active_customer(self, customer_id, customer_name=None):
+        self.customer = {
+            "id": customer_id,
+            "name": customer_name or f"客户{customer_id}",
+        }
+        self.cart.clear()
 
     def get_all_suppliers(self):
-        # 获取所有供应商的深拷贝副本
         return deepcopy(self.suppliers)
 
     def add_supplier(self, name, region, contact_info=None):
-        # 添加新供应商
         supplier = {
             "id": self.next_supplier_id,
             "name": name,
@@ -66,20 +97,11 @@ class DemoStore:
         self.suppliers.append(supplier)
         return deepcopy(supplier)
 
-    # --- 【新增/修改】核心方法：支持按供货商过滤商品 ---
     def get_products_by_supplier(self, supplier_id=None):
-        """
-        获取商品列表。
-        如果传入 supplier_id，则只返回该供货商的商品（用于供货商登录）。
-        如果不传，则返回所有商品（用于管理员或客户）。
-        """
         rows = []
         for product in self.products:
-            # 如果指定了供货商ID，且当前商品不属于该供货商，则跳过
             if supplier_id is not None and product["supplier_id"] != supplier_id:
                 continue
-
-            # 构建视图数据（包含供应商名称）
             supplier = self._find_supplier(product["supplier_id"])
             row = deepcopy(product)
             row["supplier_name"] = supplier["name"] if supplier else "未知供应商"
@@ -88,19 +110,17 @@ class DemoStore:
         return rows
 
     def add_product(self, name, price, stock, tags_list, supplier_id):
-        # 添加新商品
         product = {
             "id": self.next_product_id,
             "name": name,
             "price": float(price),
             "stock": int(stock),
             "tags": tags_list,
-            "supplier_id": supplier_id,  # 确保关联供货商ID
+            "supplier_id": supplier_id,
         }
         self.next_product_id += 1
         self.products.append(product)
 
-        # 返回视图数据
         supplier = self._find_supplier(supplier_id)
         row = deepcopy(product)
         row["supplier_name"] = supplier["name"] if supplier else "未知供应商"
@@ -108,7 +128,6 @@ class DemoStore:
         return row
 
     def search_products(self, keyword="", selected_tags=None):
-        # 客户搜索商品（只看全量数据，不关心供货商ID）
         keyword = keyword.strip().lower()
         selected_tags = [tag.strip().lower() for tag in (selected_tags or []) if tag.strip()]
 
@@ -116,12 +135,9 @@ class DemoStore:
         for product in self.products:
             name_text = product["name"].lower()
             tags_text = [tag.lower() for tag in product["tags"]]
-            # 检查关键词是否匹配商品名或标签
             keyword_ok = not keyword or keyword in name_text or any(keyword in tag for tag in tags_text)
-            # 检查是否包含所有选中的标签
             tags_ok = not selected_tags or any(tag in tags_text for tag in selected_tags)
             if keyword_ok and tags_ok:
-                # 搜索结果也需要格式化
                 supplier = self._find_supplier(product["supplier_id"])
                 row = deepcopy(product)
                 row["supplier_name"] = supplier["name"] if supplier else "未知供应商"
@@ -130,7 +146,6 @@ class DemoStore:
         return results
 
     def add_to_cart(self, product_id, quantity):
-        # 添加商品到购物车
         quantity = int(quantity)
         product = self._find_product(product_id)
         if not product:
@@ -140,7 +155,6 @@ class DemoStore:
         if product["stock"] < quantity:
             raise ValueError("库存不足")
 
-        # 如果商品已在购物车中，更新数量和总价
         for item in self.cart:
             if item["product_id"] == product_id:
                 if product["stock"] < item["quantity"] + quantity:
@@ -149,7 +163,6 @@ class DemoStore:
                 item["subtotal"] = round(item["quantity"] * item["price"], 2)
                 return deepcopy(item)
 
-        # 否则添加新购物车项
         cart_item = {
             "product_id": product["id"],
             "name": product["name"],
@@ -161,37 +174,29 @@ class DemoStore:
         return deepcopy(cart_item)
 
     def get_cart_items(self):
-        # 获取购物车所有项的深拷贝
         return deepcopy(self.cart)
 
     def remove_cart_item(self, product_id):
-        # 从购物车中移除指定商品
         self.cart = [item for item in self.cart if item["product_id"] != product_id]
 
     def clear_cart(self):
-        # 清空购物车
         self.cart.clear()
 
     def get_cart_total(self):
-        # 计算购物车总价
         return round(sum(item["subtotal"] for item in self.cart), 2)
 
     def place_order(self, customer_id, cart_items=None):
-        # 提交订单
         if customer_id != self.customer["id"]:
             raise ValueError("客户不存在")
-        # 使用传入的购物车项或当前购物车
         items = deepcopy(cart_items if cart_items is not None else self.cart)
         if not items:
             raise ValueError("购物车为空")
 
-        # 校验库存
         for item in items:
             product = self._find_product(item["product_id"])
             if not product or product["stock"] < item["quantity"]:
                 raise ValueError(f"{item['name']} 库存不足")
 
-        # 扣减库存并构建订单项
         order_items = []
         for item in items:
             product = self._find_product(item["product_id"])
@@ -207,7 +212,6 @@ class DemoStore:
                 }
             )
 
-        # 创建订单对象
         order = {
             "id": self.next_order_id,
             "customer_id": customer_id,
@@ -217,26 +221,47 @@ class DemoStore:
             "items": order_items,
         }
         self.next_order_id += 1
-        # 将新订单插入列表头部（最新订单在前）
         self.orders.insert(0, order)
-        # 下单成功后清空购物车
         self.clear_cart()
         return deepcopy(order)
 
     def get_orders_by_customer(self, customer_id):
-        # 获取指定客户的所有订单
         rows = [order for order in self.orders if order["customer_id"] == customer_id]
         return deepcopy(rows)
 
+    def get_orders_by_supplier(self, supplier_id):
+        rows = []
+        for order in self.orders:
+            if any(self._find_product(item["product_id"])["supplier_id"] == supplier_id for item in order["items"]):
+                rows.append(
+                    {
+                        "id": order["id"],
+                        "customer_id": order["customer_id"],
+                        "order_date": order["order_date"],
+                        "status": order["status"],
+                        "total_price": order["total_price"],
+                    }
+                )
+        return deepcopy(rows)
+
     def get_order_details(self, order_id):
-        # 获取订单的详细信息（订单项列表）
         order = self._find_order(order_id)
         if not order:
             return []
         return deepcopy(order["items"])
 
+    def get_order_details_by_supplier(self, order_id, supplier_id):
+        order = self._find_order(order_id)
+        if not order:
+            return []
+        rows = []
+        for item in order["items"]:
+            product = self._find_product(item["product_id"])
+            if product and product["supplier_id"] == supplier_id:
+                rows.append(deepcopy(item))
+        return rows
+
     def modify_order_action(self, order_id, action_type, item_id=None):
-        # 修改订单（取消或移除商品）
         order = self._find_order(order_id)
         if not order:
             raise ValueError("订单不存在")
@@ -244,7 +269,6 @@ class DemoStore:
             raise ValueError("当前订单不可修改")
 
         if action_type == "cancel":
-            # 取消订单：恢复库存
             for item in order["items"]:
                 product = self._find_product(item["product_id"])
                 if product:
@@ -253,7 +277,6 @@ class DemoStore:
             return deepcopy(order)
 
         if action_type == "remove":
-            # 移除订单项
             if item_id is None:
                 raise ValueError("缺少订单项")
             target = None
@@ -264,40 +287,32 @@ class DemoStore:
             if not target:
                 raise ValueError("订单项不存在")
 
-            # 恢复被移除商品的库存
             product = self._find_product(target["product_id"])
             if product:
                 product["stock"] += target["quantity"]
-            # 从订单项列表中移除
             order["items"] = [item for item in order["items"] if item["item_id"] != item_id]
-            # 重新计算订单总价
             order["total_price"] = round(sum(item["subtotal"] for item in order["items"]), 2)
             if order["items"]:
-                # 重置订单项ID以保持连续
                 self._reset_item_ids(order)
             else:
-                # 如果订单项为空，将订单状态设为已取消
                 order["status"] = "已取消"
             return deepcopy(order)
 
         raise ValueError("未知操作")
 
     def _find_supplier(self, supplier_id):
-        # 根据ID查找供应商
         for supplier in self.suppliers:
             if supplier["id"] == supplier_id:
                 return supplier
         return None
 
     def _find_product(self, product_id):
-        # 根据ID查找商品
         for product in self.products:
             if product["id"] == product_id:
                 return product
         return None
 
     def _find_order(self, order_id):
-        # 根据ID查找订单
         for order in self.orders:
             if order["id"] == order_id:
                 return order
@@ -305,6 +320,5 @@ class DemoStore:
 
     @staticmethod
     def _reset_item_ids(order):
-        # 重置订单项的ID，使其从1开始连续递增
         for index, item in enumerate(order["items"], start=1):
             item["item_id"] = index

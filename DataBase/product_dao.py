@@ -135,7 +135,7 @@ def search_products(keyword, tag_filter, conn=None):
                     v.business_name AS supplier_name,
                     COALESCE(GROUP_CONCAT(DISTINCT t.tag_name ORDER BY t.tag_name SEPARATOR ', '), '') AS tags_text
                 FROM products p
-                JOIN vendors v ON v.vendor_id = p.product_id
+                JOIN vendors v ON v.vendor_id = p.vendor_id
                 LEFT JOIN product_tags pt ON pt.product_id = p.product_id
                 LEFT JOIN tags t ON t.tag_id = pt.tag_id
                 WHERE 1 = 1
