@@ -1,0 +1,532 @@
+-- Create database
+DROP DATABASE IF EXISTS ecommerce_platform;
+CREATE DATABASE ecommerce_platform;
+USE ecommerce_platform;
+
+-- ============================================================
+-- 1. Create Base Tables
+-- ============================================================
+
+-- 1.1 Vendor Table
+CREATE TABLE Vendor (
+    vendor_id INT AUTO_INCREMENT PRIMARY KEY,
+    business_name VARCHAR(100) NOT NULL UNIQUE,
+    avg_rating DECIMAL(3,2) DEFAULT 0.00,
+    geo_location VARCHAR(200) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 1.2 Customer Table
+CREATE TABLE Customer (
+    customer_id INT AUTO_INCREMENT PRIMARY KEY,
+    contact_num VARCHAR(20) NOT NULL UNIQUE,
+    shipping_address VARCHAR(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 1.3 Tag Table
+CREATE TABLE Tag (
+    tag_id INT AUTO_INCREMENT PRIMARY KEY,
+    tag_name VARCHAR(50) NOT NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 1.4 Product Table
+CREATE TABLE Product (
+    product_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_name VARCHAR(100) NOT NULL,
+    price DECIMAL(10,2) NOT NULL CHECK (price > 0),
+    stock_quantity INT NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
+    vendor_id INT NOT NULL,
+    CONSTRAINT fk_product_vendor FOREIGN KEY (vendor_id) 
+        REFERENCES Vendor(vendor_id) ON DELETE CASCADE,
+    CONSTRAINT uk_product_vendor UNIQUE (product_name, vendor_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 1.5 Orders Table
+CREATE TABLE Orders (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    order_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    total_price DECIMAL(10,2) NOT NULL DEFAULT 0.00 CHECK (total_price >= 0),
+    order_status ENUM('PENDING_PAY', 'PENDING_SHIP', 'SHIPPED', 'COMPLETED', 'CANCELLED') 
+        NOT NULL DEFAULT 'PENDING_PAY',
+    CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) 
+        REFERENCES Customer(customer_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 1.6 ProductTag Table (Associative Entity)
+CREATE TABLE ProductTag (
+    protag_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT NOT NULL,
+    tag_id INT NOT NULL,
+    CONSTRAINT fk_producttag_product FOREIGN KEY (product_id) 
+        REFERENCES Product(product_id) ON DELETE CASCADE,
+    CONSTRAINT fk_producttag_tag FOREIGN KEY (tag_id) 
+        REFERENCES Tag(tag_id) ON DELETE CASCADE,
+    CONSTRAINT uk_product_tag UNIQUE (product_id, tag_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 1.7 OrderItem Table (Associative Entity)
+CREATE TABLE OrderItem (
+    item_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    buy_quantity INT NOT NULL CHECK (buy_quantity >= 1),
+    unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price > 0),
+    CONSTRAINT fk_orderitem_order FOREIGN KEY (order_id) 
+        REFERENCES Orders(order_id) ON DELETE CASCADE,
+    CONSTRAINT fk_orderitem_product FOREIGN KEY (product_id) 
+        REFERENCES Product(product_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 1.8 Transaction Table
+CREATE TABLE Transaction (
+    transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    vendor_id INT NOT NULL,
+    pay_amount DECIMAL(10,2) NOT NULL CHECK (pay_amount > 0),
+    transaction_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_transaction_order FOREIGN KEY (order_id) 
+        REFERENCES Orders(order_id) ON DELETE CASCADE,
+    CONSTRAINT fk_transaction_vendor FOREIGN KEY (vendor_id) 
+        REFERENCES Vendor(vendor_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 1.9 Rating Table
+CREATE TABLE Rating (
+    rating_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    vendor_id INT NOT NULL,
+    score INT NOT NULL CHECK (score >= 1 AND score <= 5),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rating_customer FOREIGN KEY (customer_id) 
+        REFERENCES Customer(customer_id) ON DELETE CASCADE,
+    CONSTRAINT fk_rating_vendor FOREIGN KEY (vendor_id) 
+        REFERENCES Vendor(vendor_id) ON DELETE CASCADE,
+    CONSTRAINT uk_customer_vendor UNIQUE (customer_id, vendor_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================================
+-- 2. Create Indexes (Performance Optimization)
+-- ============================================================
+
+-- Product table indexes
+CREATE INDEX idx_product_name ON Product(product_name);
+CREATE INDEX idx_product_price ON Product(price);
+CREATE INDEX idx_product_vendor ON Product(vendor_id);
+
+-- Orders table indexes
+CREATE INDEX idx_orders_customer ON Orders(customer_id);
+CREATE INDEX idx_orders_date ON Orders(order_date);
+CREATE INDEX idx_orders_status ON Orders(order_status);
+
+-- OrderItem table indexes
+CREATE INDEX idx_orderitem_order ON OrderItem(order_id);
+CREATE INDEX idx_orderitem_product ON OrderItem(product_id);
+
+-- Transaction table indexes
+CREATE INDEX idx_transaction_order ON Transaction(order_id);
+CREATE INDEX idx_transaction_vendor ON Transaction(vendor_id);
+
+-- Rating table indexes
+CREATE INDEX idx_rating_vendor ON Rating(vendor_id);
+CREATE INDEX idx_rating_customer ON Rating(customer_id);
+
+-- ProductTag table indexes
+CREATE INDEX idx_producttag_product ON ProductTag(product_id);
+CREATE INDEX idx_producttag_tag ON ProductTag(tag_id);
+
+-- ============================================================
+-- 3. Create Views
+-- ============================================================
+
+-- 3.1 Product View (with tags and vendor info)
+CREATE VIEW ProductFullView AS
+SELECT 
+    p.product_id,
+    p.product_name,
+    p.price,
+    p.stock_quantity,
+    v.vendor_id,
+    v.business_name AS vendor_name,
+    v.avg_rating AS vendor_rating,
+    GROUP_CONCAT(DISTINCT t.tag_name ORDER BY t.tag_name SEPARATOR ', ') AS tags
+FROM Product p
+JOIN Vendor v ON p.vendor_id = v.vendor_id
+LEFT JOIN ProductTag pt ON p.product_id = pt.product_id
+LEFT JOIN Tag t ON pt.tag_id = t.tag_id
+GROUP BY p.product_id;
+
+-- 3.2 Order Details View
+CREATE VIEW OrderDetailView AS
+SELECT 
+    o.order_id,
+    o.order_date,
+    o.order_status,
+    o.total_price,
+    c.customer_id,
+    c.contact_num,
+    c.shipping_address,
+    oi.item_id,
+    oi.product_id,
+    p.product_name,
+    oi.buy_quantity,
+    oi.unit_price,
+    (oi.buy_quantity * oi.unit_price) AS item_total
+FROM Orders o
+JOIN Customer c ON o.customer_id = c.customer_id
+JOIN OrderItem oi ON o.order_id = oi.order_id
+JOIN Product p ON oi.product_id = p.product_id;
+
+-- 3.3 Vendor Sales Statistics View
+CREATE VIEW VendorSalesView AS
+SELECT 
+    v.vendor_id,
+    v.business_name,
+    COUNT(DISTINCT t.transaction_id) AS total_transactions,
+    SUM(t.pay_amount) AS total_sales,
+    AVG(r.score) AS avg_rating
+FROM Vendor v
+LEFT JOIN Transaction t ON v.vendor_id = t.vendor_id
+LEFT JOIN Rating r ON v.vendor_id = r.vendor_id
+GROUP BY v.vendor_id;
+
+-- 3.4 Customer Spending Statistics View
+CREATE VIEW CustomerStatsView AS
+SELECT 
+    c.customer_id,
+    c.contact_num,
+    COUNT(DISTINCT o.order_id) AS total_orders,
+    SUM(o.total_price) AS total_spent,
+    MAX(o.order_date) AS last_order_date
+FROM Customer c
+LEFT JOIN Orders o ON c.customer_id = o.customer_id
+WHERE o.order_status != 'CANCELLED'
+GROUP BY c.customer_id;
+
+-- ============================================================
+-- 4. Stored Procedures and Triggers
+-- ============================================================
+
+DELIMITER //
+
+-- 4.1 Stored Procedure: Update vendor average rating
+CREATE PROCEDURE UpdateVendorAvgRating(IN p_vendor_id INT)
+BEGIN
+    UPDATE Vendor v
+    SET v.avg_rating = (
+        SELECT COALESCE(AVG(score), 0)
+        FROM Rating r 
+        WHERE r.vendor_id = p_vendor_id
+    )
+    WHERE v.vendor_id = p_vendor_id;
+END //
+
+-- 4.2 Stored Procedure: Create order with transaction
+CREATE PROCEDURE CreateOrder(
+    IN p_customer_id INT,
+    IN p_items_json JSON
+)
+BEGIN
+    DECLARE v_order_id INT;
+    DECLARE v_total DECIMAL(10,2) DEFAULT 0;
+    DECLARE v_idx INT DEFAULT 0;
+    DECLARE v_count INT;
+    DECLARE v_product_id INT;
+    DECLARE v_quantity INT;
+    DECLARE v_unit_price DECIMAL(10,2);
+    DECLARE v_vendor_id INT;
+    DECLARE done INT DEFAULT FALSE;
+    
+    DECLARE cur CURSOR FOR 
+        SELECT product_id, quantity 
+        FROM JSON_TABLE(p_items_json, '$[*]' COLUMNS(
+            product_id INT PATH '$.product_id',
+            quantity INT PATH '$.quantity'
+        )) AS jt;
+    
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+    
+    START TRANSACTION;
+    
+    -- Create order
+    INSERT INTO Orders (customer_id, order_date, order_status, total_price)
+    VALUES (p_customer_id, NOW(), 'PENDING_PAY', 0);
+    SET v_order_id = LAST_INSERT_ID();
+    
+    -- Insert order items and update stock
+    OPEN cur;
+    read_loop: LOOP
+        FETCH cur INTO v_product_id, v_quantity;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+        
+        -- Get product price and vendor
+        SELECT price, vendor_id INTO v_unit_price, v_vendor_id
+        FROM Product WHERE product_id = v_product_id;
+        
+        -- Check stock
+        IF (SELECT stock_quantity FROM Product WHERE product_id = v_product_id) < v_quantity THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient stock';
+        END IF;
+        
+        -- Insert order item
+        INSERT INTO OrderItem (order_id, product_id, buy_quantity, unit_price)
+        VALUES (v_order_id, v_product_id, v_quantity, v_unit_price);
+        
+        -- Deduct stock
+        UPDATE Product 
+        SET stock_quantity = stock_quantity - v_quantity 
+        WHERE product_id = v_product_id;
+        
+        -- Accumulate total
+        SET v_total = v_total + (v_unit_price * v_quantity);
+    END LOOP;
+    CLOSE cur;
+    
+    -- Update order total
+    UPDATE Orders SET total_price = v_total WHERE order_id = v_order_id;
+    
+    -- Create transaction records per vendor
+    INSERT INTO Transaction (order_id, vendor_id, pay_amount, transaction_time)
+    SELECT 
+        v_order_id,
+        p.vendor_id,
+        SUM(oi.buy_quantity * oi.unit_price),
+        NOW()
+    FROM OrderItem oi
+    JOIN Product p ON oi.product_id = p.product_id
+    WHERE oi.order_id = v_order_id
+    GROUP BY p.vendor_id;
+    
+    COMMIT;
+END //
+
+-- 4.3 Stored Procedure: Cancel order
+CREATE PROCEDURE CancelOrder(IN p_order_id INT)
+BEGIN
+    DECLARE v_status VARCHAR(20);
+    
+    -- Check order status
+    SELECT order_status INTO v_status FROM Orders WHERE order_id = p_order_id;
+    
+    IF v_status IN ('PENDING_PAY', 'PENDING_SHIP') THEN
+        START TRANSACTION;
+        
+        -- Restore stock
+        UPDATE Product p
+        JOIN OrderItem oi ON p.product_id = oi.product_id
+        SET p.stock_quantity = p.stock_quantity + oi.buy_quantity
+        WHERE oi.order_id = p_order_id;
+        
+        -- Cancel order
+        UPDATE Orders SET order_status = 'CANCELLED' WHERE order_id = p_order_id;
+        
+        -- Delete related transactions
+        DELETE FROM Transaction WHERE order_id = p_order_id;
+        
+        COMMIT;
+    ELSE
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Order cannot be cancelled';
+    END IF;
+END //
+
+-- 4.4 Trigger: Update vendor rating after insert
+CREATE TRIGGER after_rating_insert
+AFTER INSERT ON Rating
+FOR EACH ROW
+BEGIN
+    CALL UpdateVendorAvgRating(NEW.vendor_id);
+END //
+
+-- 4.5 Trigger: Update vendor rating after update
+CREATE TRIGGER after_rating_update
+AFTER UPDATE ON Rating
+FOR EACH ROW
+BEGIN
+    IF OLD.score != NEW.score THEN
+        CALL UpdateVendorAvgRating(NEW.vendor_id);
+    END IF;
+END //
+
+DELIMITER ;
+
+-- ============================================================
+-- 5. Insert Sample Data
+-- ============================================================
+
+-- 5.1 Insert vendors
+INSERT INTO Vendor (business_name, geo_location) VALUES
+('TechWorld', 'Hong Kong, Kowloon Bay'),
+('BookLovers', 'Hong Kong, Causeway Bay'),
+('FashionHub', 'Hong Kong, Tsim Sha Tsui'),
+('HomeEssentials', 'Hong Kong, Sha Tin'),
+('SportsGear', 'Hong Kong, Mong Kok'),
+('BeautyStore', 'Hong Kong, Central');
+
+-- 5.2 Insert customers
+INSERT INTO Customer (contact_num, shipping_address) VALUES
+('852-91234567', 'Hong Kong, Central, 10 Queen''s Road'),
+('852-92345678', 'Hong Kong, Wan Chai, 20 Hennessy Road'),
+('852-93456789', 'Hong Kong, Mong Kok, 30 Nathan Road'),
+('852-94567890', 'Hong Kong, Tsim Sha Tsui, 40 Canton Road'),
+('852-95678901', 'Hong Kong, Causeway Bay, 50 Hysan Avenue');
+
+-- 5.3 Insert tags
+INSERT INTO Tag (tag_name) VALUES
+('electronics'), ('computer'), ('smartphone'), ('accessory'),
+('fiction'), ('non-fiction'), ('bestseller'), ('educational'),
+('clothing'), ('men'), ('women'), ('kids'),
+('home'), ('kitchen'), ('furniture'), ('decor'),
+('sports'), ('outdoor'), ('fitness'), ('footwear'),
+('beauty'), ('skincare'), ('makeup'), ('haircare');
+
+-- 5.4 Insert products
+INSERT INTO Product (product_name, price, stock_quantity, vendor_id) VALUES
+-- TechWorld products
+('Laptop Pro', 9999.00, 50, 1),
+('Wireless Mouse', 199.00, 200, 1),
+('Mechanical Keyboard', 599.00, 100, 1),
+('USB-C Hub', 299.00, 150, 1),
+('External SSD 1TB', 899.00, 80, 1),
+-- BookLovers products
+('Best Novel 2024', 128.00, 500, 2),
+('Cooking Guide', 88.00, 300, 2),
+('Business Strategy', 150.00, 150, 2),
+('Children Story Book', 65.00, 400, 2),
+('Science Encyclopedia', 199.00, 100, 2),
+-- FashionHub products
+('Men\'s T-Shirt', 99.00, 400, 3),
+('Women\'s Jeans', 299.00, 250, 3),
+('Leather Jacket', 899.00, 80, 3),
+('Sports Shoes', 399.00, 150, 3),
+('Winter Coat', 699.00, 100, 3),
+-- HomeEssentials products
+('Coffee Maker', 399.00, 60, 4),
+('Desk Lamp', 129.00, 120, 4),
+('Office Chair', 1299.00, 30, 4),
+('Vacuum Cleaner', 899.00, 40, 4),
+('Bed Sheets Set', 299.00, 200, 4),
+-- SportsGear products
+('Yoga Mat', 199.00, 300, 5),
+('Dumbbell Set', 499.00, 100, 5),
+('Running Shoes', 599.00, 150, 5),
+('Sports Water Bottle', 79.00, 500, 5),
+('Fitness Tracker', 399.00, 200, 5),
+-- BeautyStore products
+('Facial Cream', 299.00, 200, 6),
+('Lipstick Set', 199.00, 300, 6),
+('Shampoo', 89.00, 400, 6),
+('Face Mask', 129.00, 350, 6),
+('Perfume', 399.00, 150, 6);
+
+-- 5.5 Insert product-tag associations
+INSERT INTO ProductTag (product_id, tag_id) VALUES
+-- TechWorld tags
+(1, 1), (1, 2),
+(2, 1), (2, 4),
+(3, 1), (3, 2),
+(4, 1), (4, 4),
+(5, 1), (5, 4),
+-- BookLovers tags
+(6, 5), (6, 7),
+(7, 6), (7, 8),
+(8, 6), (8, 7),
+(9, 5), (9, 12),
+(10, 6), (10, 8),
+-- FashionHub tags
+(11, 9), (11, 10),
+(12, 9), (12, 11),
+(13, 9), (13, 10),
+(14, 17), (14, 20),
+(15, 9), (15, 11),
+-- HomeEssentials tags
+(16, 13), (16, 14),
+(17, 13), (17, 14),
+(18, 13), (18, 15),
+(19, 13), (19, 14),
+(20, 13), (20, 16),
+-- SportsGear tags
+(21, 17), (21, 19),
+(22, 17), (22, 19),
+(23, 17), (23, 20),
+(24, 17), (24, 18),
+(25, 17), (25, 19),
+-- BeautyStore tags
+(26, 21), (26, 22),
+(27, 21), (27, 23),
+(28, 21), (28, 24),
+(29, 21), (29, 22),
+(30, 21), (30, 23);
+
+-- 5.6 Insert orders
+INSERT INTO Orders (customer_id, order_date, total_price, order_status) VALUES
+(1, '2026-03-15 10:30:00', 10198.00, 'SHIPPED'),
+(2, '2026-03-16 14:15:00', 399.00, 'PENDING_SHIP'),
+(3, '2026-03-18 09:45:00', 1498.00, 'PENDING_PAY'),
+(1, '2026-03-20 16:20:00', 899.00, 'COMPLETED'),
+(4, '2026-03-22 11:00:00', 1299.00, 'PENDING_SHIP'),
+(5, '2026-03-25 13:30:00', 698.00, 'COMPLETED');
+
+-- 5.7 Insert order items
+INSERT INTO OrderItem (order_id, product_id, buy_quantity, unit_price) VALUES
+(1, 1, 1, 9999.00),
+(1, 2, 1, 199.00),
+(2, 16, 1, 399.00),
+(3, 7, 2, 88.00),
+(3, 9, 2, 65.00),
+(3, 21, 1, 199.00),
+(3, 24, 3, 79.00),
+(4, 13, 1, 899.00),
+(5, 18, 1, 1299.00),
+(6, 25, 1, 399.00),
+(6, 21, 1, 199.00),
+(6, 24, 1, 79.00),
+(6, 2, 1, 199.00);
+
+-- 5.8 Insert transactions
+INSERT INTO Transaction (order_id, vendor_id, pay_amount, transaction_time) VALUES
+(1, 1, 10198.00, '2026-03-15 10:35:00'),
+(2, 4, 399.00, '2026-03-16 14:20:00'),
+(3, 2, 176.00, '2026-03-18 09:50:00'),
+(3, 5, 436.00, '2026-03-18 09:50:00'),
+(4, 3, 899.00, '2026-03-20 16:25:00'),
+(5, 4, 1299.00, '2026-03-22 11:05:00'),
+(6, 5, 199.00, '2026-03-25 13:35:00'),
+(6, 5, 79.00, '2026-03-25 13:35:00'),
+(6, 5, 399.00, '2026-03-25 13:35:00'),
+(6, 1, 199.00, '2026-03-25 13:35:00');
+
+-- 5.9 Insert ratings
+INSERT INTO Rating (customer_id, vendor_id, score, created_at) VALUES
+(1, 1, 5, '2026-03-20 10:00:00'),
+(1, 4, 4, '2026-03-20 10:05:00'),
+(2, 4, 3, '2026-03-18 15:30:00'),
+(3, 2, 5, '2026-03-19 14:00:00'),
+(3, 5, 4, '2026-03-19 14:05:00'),
+(4, 4, 5, '2026-03-23 09:00:00'),
+(5, 5, 4, '2026-03-26 16:00:00'),
+(5, 1, 5, '2026-03-26 16:05:00');
+
+-- 5.10 Update vendor average ratings
+CALL UpdateVendorAvgRating(1);
+CALL UpdateVendorAvgRating(2);
+CALL UpdateVendorAvgRating(3);
+CALL UpdateVendorAvgRating(4);
+CALL UpdateVendorAvgRating(5);
+CALL UpdateVendorAvgRating(6);
+
+-- ============================================================
+-- 6. Verification Queries
+-- ============================================================
+
+-- View all products with tags and vendor info
+SELECT * FROM ProductFullView;
+
+-- View all order details
+SELECT * FROM OrderDetailView;
+
+-- View vendor sales statistics
+SELECT * FROM VendorSalesView;
+
+-- View customer spending statistics
+SELECT * FROM CustomerStatsView;
