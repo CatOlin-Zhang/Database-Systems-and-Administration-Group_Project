@@ -1,3 +1,20 @@
+# File Description:
+#   This file defines all the SQL statements required for the entire e-commerce platform.
+#   All SQL statements use parameterized queries (using %s placeholders) to prevent SQL injection attacks. 
+#
+# Usage:
+#   1. Import this module in other Python files: 
+#      from database.sql_statements import EcommerceSQL
+#
+# 2. Execute SQL using PyMySQL:
+#      cursor.execute(EcommerceSQL.GET_ALL_VENDORS)
+#      cursor.execute(EcommerceSQL.ADD_VENDOR, (name, location))
+#
+#  3. For searches with LIKE, the % wildcard symbol needs to be manually added: 
+#      keyword = "laptop"
+#      cursor.execute(EcommerceSQL.SEARCH_PRODUCTS, (f'%{keyword}%', f'%{keyword}%'))
+
+
 class EcommerceSQL:
     # ========== Vendor Management ==========
 
