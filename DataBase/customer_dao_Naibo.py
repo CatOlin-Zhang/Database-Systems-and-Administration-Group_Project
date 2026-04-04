@@ -26,3 +26,17 @@ def get_customer_by_id(customer_id):
         return cursor.fetchone()
     finally:
         conn.close()
+
+def update_customer_address(customer_id, shipping_address):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        sql = """
+            UPDATE Customer
+            SET shipping_address = %s
+            WHERE customer_id = %s
+        """
+        cursor.execute(sql, (shipping_address, customer_id))
+        conn.commit()
+    finally:
+        conn.close()
