@@ -3,8 +3,9 @@ from database.sql_statements import EcommerceSQL
 
 # 添加客户
 def add_customer(contact_num, shipping_address, conn=None):
-    contact_num = contact_num.strip()
-    shipping_address = shipping_address.strip()
+    
+    contact_num = (contact_num or "").strip()
+    shipping_address = (shipping_address or "").strip()
     if not contact_num or not shipping_address:
         raise ValueError("Contact number and shipping address cannot be empty")
 
@@ -16,10 +17,10 @@ def add_customer(contact_num, shipping_address, conn=None):
         if own_conn:
             conn.commit()
         return True
-    except Exception:
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to add customer: {e}")
     finally:
         if own_conn:
             conn.close()
@@ -38,7 +39,7 @@ def get_customer_by_id(customer_id, conn=None):
 
 # 更新顾客地址
 def update_customer_address(customer_id, shipping_address, conn=None):
-    shipping_address = shipping_address.strip()
+    shipping_address = (shipping_address or "").strip()
     if not shipping_address:
         raise ValueError("Shipping address cannot be empty")
 
@@ -50,10 +51,10 @@ def update_customer_address(customer_id, shipping_address, conn=None):
         if own_conn:
             conn.commit()
         return True
-    except Exception:
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to update address: {e}")
     finally:
         if own_conn:
             conn.close()
