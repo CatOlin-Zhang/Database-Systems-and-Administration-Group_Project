@@ -1,33 +1,21 @@
 from DataBase.db_connector import get_connection
 from database.sql_statements import EcommerceSQL
 
-# 检查商品库存
-def check_product_stock(product_id, conn=None):
-    own_conn = conn is None
-    conn = conn or get_connection()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute(EcommerceSQL.CHECK_PRODUCT_STOCK, (product_id,))
-            return cursor.fetchone()
-    finally:
-        if own_conn:
-            conn.close()
-
 # 创建新订单
 def create_order(customer_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.CREATE_ORDER, (customer_id,))
-            last_id = cursor.lastrowid
+            order_id = cursor.lastrowid
         if own_conn:
             conn.commit()
-        return last_id
-    except Exception:
+        return order_id
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to create order: {e}")
     finally:
         if own_conn:
             conn.close()
@@ -37,7 +25,7 @@ def get_last_order_id(conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.GET_LAST_ORDER_ID)
             return cursor.fetchone()
     finally:
@@ -46,17 +34,26 @@ def get_last_order_id(conn=None):
 
 # 为订单添加商品
 def add_order_item(order_id, product_id, buy_quantity, conn=None):
+    try:
+        buy_quantity = int(buy_quantity)
+        if buy_quantity <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        raise ValueError("Buy quantity must be a positive integer")
+
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
+          
             cursor.execute(EcommerceSQL.ADD_ORDER_ITEM, (order_id, product_id, buy_quantity, product_id))
         if own_conn:
             conn.commit()
-    except Exception:
+        return True
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to add order item: {e}")
     finally:
         if own_conn:
             conn.close()
@@ -66,31 +63,43 @@ def update_order_total(order_id, total_price, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.UPDATE_ORDER_TOTAL, (total_price, order_id))
         if own_conn:
             conn.commit()
-    except Exception:
+        return True
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to update order total: {e}")
     finally:
         if own_conn:
             conn.close()
 
 # 扣减商品库存
 def update_product_stock(product_id, quantity, conn=None):
+    try:
+        quantity = int(quantity)
+        if quantity <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        raise ValueError("Deduction quantity must be a positive integer")
+
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
-            cursor.execute(EcommerceSQL.UPDATE_PRODUCT_STOCK, (quantity, product_id, quantity))
+        with conn.cursor(dictionary=True) as cursor:
+           
+            affected = cursor.execute(EcommerceSQL.UPDATE_PRODUCT_STOCK, (quantity, product_id, quantity))
+            if affected == 0:
+                raise RuntimeError(f"Insufficient stock for product {product_id}")
         if own_conn:
             conn.commit()
-    except Exception:
+        return True
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to update product stock: {e}")
     finally:
         if own_conn:
             conn.close()
@@ -100,14 +109,15 @@ def create_transaction(order_id, vendor_id, pay_amount, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.CREATE_TRANSACTION, (order_id, vendor_id, pay_amount))
         if own_conn:
             conn.commit()
-    except Exception:
+        return True
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to create transaction: {e}")
     finally:
         if own_conn:
             conn.close()
@@ -117,7 +127,7 @@ def get_vendor_totals_by_order(order_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.GET_VENDOR_TOTALS_BY_ORDER, (order_id,))
             return cursor.fetchall()
     finally:
@@ -129,7 +139,7 @@ def get_order_products(order_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.GET_ORDER_PRODUCTS, (order_id,))
             return cursor.fetchall()
     finally:
@@ -141,7 +151,7 @@ def get_customer_orders(customer_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.GET_CUSTOMER_ORDERS, (customer_id,))
             return cursor.fetchall()
     finally:
@@ -153,7 +163,7 @@ def get_order_details(order_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.GET_ORDER_DETAILS, (order_id,))
             return cursor.fetchone()
     finally:
@@ -165,7 +175,7 @@ def get_order_status(order_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.GET_ORDER_STATUS, (order_id,))
             return cursor.fetchone()
     finally:
@@ -177,14 +187,15 @@ def delete_order_item(item_id, order_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.DELETE_ORDER_ITEM, (item_id, order_id))
         if own_conn:
             conn.commit()
-    except Exception:
+        return True
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to delete order item: {e}")
     finally:
         if own_conn:
             conn.close()
@@ -194,14 +205,15 @@ def cancel_order(order_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.CANCEL_ORDER, (order_id,))
         if own_conn:
             conn.commit()
-    except Exception:
+        return True
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to cancel order: {e}")
     finally:
         if own_conn:
             conn.close()
@@ -211,14 +223,15 @@ def restore_order_stock(order_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.RESTORE_ORDER_STOCK, (order_id,))
         if own_conn:
             conn.commit()
-    except Exception:
+        return True
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to restore order stock: {e}")
     finally:
         if own_conn:
             conn.close()
@@ -228,14 +241,15 @@ def delete_order_transactions(order_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.DELETE_ORDER_TRANSACTIONS, (order_id,))
         if own_conn:
             conn.commit()
-    except Exception:
+        return True
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to delete order transactions: {e}")
     finally:
         if own_conn:
             conn.close()
@@ -245,14 +259,15 @@ def update_order_status_to_shipping(order_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.UPDATE_ORDER_STATUS_TO_SHIPPING, (order_id,))
         if own_conn:
             conn.commit()
-    except Exception:
+        return True
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to update order status to shipping: {e}")
     finally:
         if own_conn:
             conn.close()
@@ -262,14 +277,15 @@ def update_order_status_to_shipped(order_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.UPDATE_ORDER_STATUS_TO_SHIPPED, (order_id,))
         if own_conn:
             conn.commit()
-    except Exception:
+        return True
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to update order status to shipped: {e}")
     finally:
         if own_conn:
             conn.close()
@@ -279,14 +295,15 @@ def update_order_status_to_completed(order_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.UPDATE_ORDER_STATUS_TO_COMPLETED, (order_id,))
         if own_conn:
             conn.commit()
-    except Exception:
+        return True
+    except Exception as e:
         if own_conn:
             conn.rollback()
-        raise
+        raise RuntimeError(f"Failed to update order status to completed: {e}")
     finally:
         if own_conn:
             conn.close()
@@ -296,7 +313,7 @@ def get_order_transactions(order_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
-        with conn.cursor() as cursor:
+        with conn.cursor(dictionary=True) as cursor:
             cursor.execute(EcommerceSQL.GET_ORDER_TRANSACTIONS, (order_id,))
             return cursor.fetchall()
     finally:
