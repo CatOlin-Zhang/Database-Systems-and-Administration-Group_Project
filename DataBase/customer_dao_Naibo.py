@@ -8,6 +8,12 @@ def add_customer(contact_num, shipping_address, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.ADD_CUSTOMER, (contact_num, shipping_address))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -24,18 +30,24 @@ def get_customer_by_id(customer_id, conn=None):
         if own_conn:
             conn.close()
 
-#更新顾客地址
+# 更新顾客地址
 def update_customer_address(customer_id, shipping_address, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.UPDATE_CUSTOMER_ADDRESS, (shipping_address, customer_id))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
 
-#验证顾客
+# 验证顾客
 def validate_customer(customer_id, conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
@@ -46,4 +58,3 @@ def validate_customer(customer_id, conn=None):
     finally:
         if own_conn:
             conn.close()
-
