@@ -1,7 +1,7 @@
 from DataBase.db_connector import get_connection
 from database.sql_statements import EcommerceSQL
 
-#获取所有供应商列表
+# 获取所有供应商列表
 def get_all_suppliers(conn=None):
     own_conn = conn is None
     conn = conn or get_connection()
@@ -19,7 +19,13 @@ def add_supplier(business_name, geo_location, conn=None):
     conn = conn or get_connection()
     try:
         with conn.cursor() as cursor:
-            cursor.execute(EcommerceSQL.ADD_VENDOR, (business_name, geo_location))
+            cursor.execute(EcommerceSQL.ADD_VENDOR, (business_name, 0, geo_location))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
