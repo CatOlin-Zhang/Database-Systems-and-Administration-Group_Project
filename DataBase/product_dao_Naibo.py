@@ -1,7 +1,7 @@
 from DataBase.db_connector_Naibo import get_db_connection
 from database.sql_statements import EcommerceSQL
 
-# 根据供应商ID查商品
+# 根据供应商ID获取商品
 def get_products_by_supplier(supplier_id):
     conn = get_db_connection()
     try:
