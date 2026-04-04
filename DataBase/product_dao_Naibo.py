@@ -20,6 +20,12 @@ def add_product(product_name, price, stock_quantity, vendor_id, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.ADD_PRODUCT, (product_name, price, stock_quantity, vendor_id))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -43,6 +49,12 @@ def add_product_tag(product_id, tag_id, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.ADD_PRODUCT_TAG, (product_id, tag_id))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -103,6 +115,18 @@ def get_product_detail(product_id, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.GET_PRODUCT_DETAILS, (product_id,))
+            return cursor.fetchone()
+    finally:
+        if own_conn:
+            conn.close()
+
+# 检查商品库存
+def check_product_stock(product_id, conn=None):
+    own_conn = conn is None
+    conn = conn or get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(EcommerceSQL.CHECK_PRODUCT_STOCK, (product_id,))
             return cursor.fetchone()
     finally:
         if own_conn:
