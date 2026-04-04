@@ -1,4 +1,5 @@
 from DataBase.db_connector_Naibo import get_db_connection
+from database.sql_statements import EcommerceSQL
 
 def add_customer(contact_num, shipping_address):
     conn = get_db_connection()
