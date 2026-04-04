@@ -20,7 +20,14 @@ def create_order(customer_id, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.CREATE_ORDER, (customer_id,))
-            return cursor.lastrowid
+            last_id = cursor.lastrowid
+        if own_conn:
+            conn.commit()
+        return last_id
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -44,6 +51,12 @@ def add_order_item(order_id, product_id, buy_quantity, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.ADD_ORDER_ITEM, (order_id, product_id, buy_quantity, product_id))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -55,6 +68,12 @@ def update_order_total(order_id, total_price, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.UPDATE_ORDER_TOTAL, (total_price, order_id))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -66,6 +85,12 @@ def update_product_stock(product_id, quantity, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.UPDATE_PRODUCT_STOCK, (quantity, product_id, quantity))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -77,6 +102,12 @@ def create_transaction(order_id, vendor_id, pay_amount, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.CREATE_TRANSACTION, (order_id, vendor_id, pay_amount))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -148,6 +179,12 @@ def delete_order_item(item_id, order_id, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.DELETE_ORDER_ITEM, (item_id, order_id))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -159,6 +196,12 @@ def cancel_order(order_id, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.CANCEL_ORDER, (order_id,))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -170,6 +213,12 @@ def restore_order_stock(order_id, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.RESTORE_ORDER_STOCK, (order_id,))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -181,6 +230,12 @@ def delete_order_transactions(order_id, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.DELETE_ORDER_TRANSACTIONS, (order_id,))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -192,6 +247,12 @@ def update_order_status_to_shipping(order_id, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.UPDATE_ORDER_STATUS_TO_SHIPPING, (order_id,))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -203,6 +264,12 @@ def update_order_status_to_shipped(order_id, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.UPDATE_ORDER_STATUS_TO_SHIPPED, (order_id,))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
@@ -214,6 +281,12 @@ def update_order_status_to_completed(order_id, conn=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(EcommerceSQL.UPDATE_ORDER_STATUS_TO_COMPLETED, (order_id,))
+        if own_conn:
+            conn.commit()
+    except Exception:
+        if own_conn:
+            conn.rollback()
+        raise
     finally:
         if own_conn:
             conn.close()
