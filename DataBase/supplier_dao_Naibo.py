@@ -1,39 +1,49 @@
-from DataBase.db_connector_Naibo import get_db_connection
+from DataBase.db_connector import get_connection
 from database.sql_statements import EcommerceSQL
 
-# 获取所有供应商列表
-def get_all_suppliers():
-    conn = get_db_connection()
+#获取所有供应商列表
+def get_all_suppliers(conn=None):
+    own_conn = conn is None
+    conn = conn or get_connection()
     try:
-        cursor = conn.cursor()
-        cursor.execute(EcommerceSQL.GET_ALL_VENDORS)
-        return cursor.fetchall()
+        with conn.cursor() as cursor:
+            cursor.execute(EcommerceSQL.GET_ALL_VENDORS)
+            return cursor.fetchall()
     finally:
-        conn.close()
+        if own_conn:
+            conn.close()
+
 # 添加供应商
-def add_supplier(business_name, geo_location):
-    conn = get_db_connection()
+def add_supplier(business_name, geo_location, conn=None):
+    own_conn = conn is None
+    conn = conn or get_connection()
     try:
-        cursor = conn.cursor()
-        cursor.execute(EcommerceSQL.ADD_VENDOR, (business_name, geo_location))
-        conn.commit()
+        with conn.cursor() as cursor:
+            cursor.execute(EcommerceSQL.ADD_VENDOR, (business_name, geo_location))
     finally:
-        conn.close()
+        if own_conn:
+            conn.close()
+
 # 根据ID获取供应商
-def get_supplier_by_id(supplier_id):
-    conn = get_db_connection()
+def get_supplier_by_id(supplier_id, conn=None):
+    own_conn = conn is None
+    conn = conn or get_connection()
     try:
-        cursor = conn.cursor()
-        cursor.execute(EcommerceSQL.GET_VENDOR_BY_ID, (supplier_id,))
-        return cursor.fetchone()
+        with conn.cursor() as cursor:
+            cursor.execute(EcommerceSQL.GET_VENDOR_BY_ID, (supplier_id,))
+            return cursor.fetchone()
     finally:
-        conn.close()
-# 根据供应商名获取供应商
-def search_suppliers_by_name(keyword):
-    conn = get_db_connection()
+        if own_conn:
+            conn.close()
+
+# 根据供应商名搜索供应商
+def search_suppliers_by_name(keyword, conn=None):
+    own_conn = conn is None
+    conn = conn or get_connection()
     try:
-        cursor = conn.cursor()
-        cursor.execute(EcommerceSQL.SEARCH_VENDORS, (f'%{keyword}%',))
-        return cursor.fetchall()
+        with conn.cursor() as cursor:
+            cursor.execute(EcommerceSQL.SEARCH_VENDORS, (f'%{keyword}%',))
+            return cursor.fetchall()
     finally:
-        conn.close()
+        if own_conn:
+            conn.close()
