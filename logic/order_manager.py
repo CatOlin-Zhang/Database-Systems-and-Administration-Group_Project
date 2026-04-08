@@ -8,7 +8,7 @@ EDITABLE_STATUSES = {"PENDING_PAY", "PENDING_SHIP"}
 def place_order(customer_id, cart_items):
     # 处理下单逻辑
     if not cart_items:
-        raise ValueError("购物车为空")
+        raise ValueError("The shopping cart is empty")
 
     # 使用上下文管理器获取数据库连接，确保事务自动提交或回滚
     with get_managed_connection() as conn:
@@ -20,12 +20,12 @@ def place_order(customer_id, cart_items):
             # 获取商品信息并锁定行（for_update=True）
             product = product_dao.get_product_by_id(cart_item["product_id"], conn=conn, for_update=True)
             if not product:
-                raise ValueError("商品不存在")
+                raise ValueError("The product does not exist")
             quantity = int(cart_item["quantity"])
             if quantity <= 0:
-                raise ValueError("购买数量必须大于 0")
+                raise ValueError("The purchase quantity must be greater than 0")
             if product["stock_quantity"] < quantity:
-                raise ValueError(f'{product["product_name"]} 库存不足')
+                raise ValueError(f'{product["product_name"]} Insufficient stock')
 
             # 将校验通过的商品信息存入临时列表
             checked_items.append(
@@ -65,10 +65,10 @@ def modify_order_action(order_id, action_type, item_id=None):
         # 获取订单信息并锁定
         order = order_dao.get_order_by_id(order_id, conn=conn, for_update=True)
         if not order:
-            raise ValueError("订单不存在")
+            raise ValueError("The order does not exist")
         # 检查订单状态是否允许修改
         if order["order_status"] not in EDITABLE_STATUSES:
-            raise ValueError("订单已进入配送流程，不能修改")
+            raise ValueError("The order has entered the delivery process and cannot be modified.")
 
         if action_type == "cancel":
             # 取消整个订单：恢复所有商品库存
@@ -85,12 +85,12 @@ def modify_order_action(order_id, action_type, item_id=None):
         if action_type == "remove":
             # 移除单个订单项
             if item_id is None:
-                raise ValueError("缺少订单项")
+                raise ValueError("Missing order item")
 
             # 获取订单项详情并锁定
             detail = order_dao.get_order_item_by_id(order_id, item_id, conn=conn, for_update=True)
             if not detail:
-                raise ValueError("订单项不存在")
+                raise ValueError("Order item does not exist")
 
             # 恢复该商品的库存
             product_dao.update_stock(detail["product_id"], detail["buy_quantity"], conn=conn)
@@ -110,4 +110,4 @@ def modify_order_action(order_id, action_type, item_id=None):
                 order_dao.delete_transactions_by_order(order_id, conn=conn)
             return order_dao.get_order_by_id(order_id, conn=conn)
 
-        raise ValueError("未知操作")
+        raise ValueError("Unknown operation")

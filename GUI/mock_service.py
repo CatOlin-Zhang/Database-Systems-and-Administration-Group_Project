@@ -46,13 +46,13 @@ class DemoStore:
                 "id": 1,
                 "customer_id": 1,
                 "order_date": "2026-03-30 10:30",
-                "status": "待发货",
+                "status": "Pending shipment",
                 "total_price": 388.0,
                 "items": [
                     {
                         "item_id": 1,
                         "product_id": 1,
-                        "name": "机械键盘",
+                        "name": "Mechanical keyboard",
                         "quantity": 1,
                         "price_at_purchase": 299.0,
                         "subtotal": 299.0,
@@ -60,7 +60,7 @@ class DemoStore:
                     {
                         "item_id": 2,
                         "product_id": 3,
-                        "name": "书桌台灯",
+                        "name": "desk lamp",
                         "quantity": 1,
                         "price_at_purchase": 89.0,
                         "subtotal": 89.0,
@@ -79,7 +79,7 @@ class DemoStore:
     def set_active_customer(self, customer_id, customer_name=None):
         self.customer = {
             "id": customer_id,
-            "name": customer_name or f"客户{customer_id}",
+            "name": customer_name or f"Customer{customer_id}",
         }
         self.cart.clear()
 
@@ -123,7 +123,7 @@ class DemoStore:
 
         supplier = self._find_supplier(supplier_id)
         row = deepcopy(product)
-        row["supplier_name"] = supplier["name"] if supplier else "未知供应商"
+        row["supplier_name"] = supplier["name"] if supplier else "Unknown supplier"
         row["tags_text"] = ", ".join(product["tags"])
         return row
 
@@ -140,7 +140,7 @@ class DemoStore:
             if keyword_ok and tags_ok:
                 supplier = self._find_supplier(product["supplier_id"])
                 row = deepcopy(product)
-                row["supplier_name"] = supplier["name"] if supplier else "未知供应商"
+                row["supplier_name"] = supplier["name"] if supplier else "Unknown supplier"
                 row["tags_text"] = ", ".join(product["tags"])
                 results.append(row)
         return results
@@ -149,16 +149,16 @@ class DemoStore:
         quantity = int(quantity)
         product = self._find_product(product_id)
         if not product:
-            raise ValueError("商品不存在")
+            raise ValueError("The product does not exist")
         if quantity <= 0:
-            raise ValueError("数量必须大于 0")
+            raise ValueError("The quantity must be greater than 0")
         if product["stock"] < quantity:
-            raise ValueError("库存不足")
+            raise ValueError("Insufficient stock")
 
         for item in self.cart:
             if item["product_id"] == product_id:
                 if product["stock"] < item["quantity"] + quantity:
-                    raise ValueError("库存不足")
+                    raise ValueError("Insufficient stock")
                 item["quantity"] += quantity
                 item["subtotal"] = round(item["quantity"] * item["price"], 2)
                 return deepcopy(item)
@@ -187,15 +187,15 @@ class DemoStore:
 
     def place_order(self, customer_id, cart_items=None):
         if customer_id != self.customer["id"]:
-            raise ValueError("客户不存在")
+            raise ValueError("Customer does not exist")
         items = deepcopy(cart_items if cart_items is not None else self.cart)
         if not items:
-            raise ValueError("购物车为空")
+            raise ValueError("The shopping cart is empty")
 
         for item in items:
             product = self._find_product(item["product_id"])
             if not product or product["stock"] < item["quantity"]:
-                raise ValueError(f"{item['name']} 库存不足")
+                raise ValueError(f"{item['name']} Insufficient stock")
 
         order_items = []
         for item in items:
@@ -216,7 +216,7 @@ class DemoStore:
             "id": self.next_order_id,
             "customer_id": customer_id,
             "order_date": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "status": "待发货",
+            "status": "Pending shipment",
             "total_price": round(sum(item["subtotal"] for item in order_items), 2),
             "items": order_items,
         }
@@ -264,28 +264,28 @@ class DemoStore:
     def modify_order_action(self, order_id, action_type, item_id=None):
         order = self._find_order(order_id)
         if not order:
-            raise ValueError("订单不存在")
-        if order["status"] != "待发货":
-            raise ValueError("当前订单不可修改")
+            raise ValueError("The order does not exist")
+        if order["status"] != "Pending shipment":
+            raise ValueError("The current order cannot be modified")
 
         if action_type == "cancel":
             for item in order["items"]:
                 product = self._find_product(item["product_id"])
                 if product:
                     product["stock"] += item["quantity"]
-            order["status"] = "已取消"
+            order["status"] = "Cancelled"
             return deepcopy(order)
 
         if action_type == "remove":
             if item_id is None:
-                raise ValueError("缺少订单项")
+                raise ValueError("Missing order item")
             target = None
             for item in order["items"]:
                 if item["item_id"] == item_id:
                     target = item
                     break
             if not target:
-                raise ValueError("订单项不存在")
+                raise ValueError("Order item does not exist")
 
             product = self._find_product(target["product_id"])
             if product:
@@ -295,10 +295,10 @@ class DemoStore:
             if order["items"]:
                 self._reset_item_ids(order)
             else:
-                order["status"] = "已取消"
+                order["status"] = "Cancelled"
             return deepcopy(order)
 
-        raise ValueError("未知操作")
+        raise ValueError("Unknown operation")
 
     def _find_supplier(self, supplier_id):
         for supplier in self.suppliers:

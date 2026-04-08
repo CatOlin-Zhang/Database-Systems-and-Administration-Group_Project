@@ -4,11 +4,11 @@ from logic import order_manager, search_engine
 
 
 STATUS_LABELS = {
-    "PENDING_PAY": "待支付",
-    "PENDING_SHIP": "待发货",
-    "SHIPPED": "已发货",
-    "COMPLETED": "已完成",
-    "CANCELLED": "已取消",
+    "PENDING_PAY": "Pending Payment",
+    "PENDING_SHIP": "Pending shipment",
+    "SHIPPED": "Shipped",
+    "COMPLETED": "Completed",
+    "CANCELLED": "Cancelled",
 }
 
 
@@ -19,7 +19,7 @@ class DatabaseStore:
         self.cart = []
         self.default_customer = customer_dao.get_customer_by_id(DEFAULT_CUSTOMER_ID) or customer_dao.get_first_customer()
         if not self.default_customer:
-            raise RuntimeError("数据库中没有客户数据")
+            raise RuntimeError("There is no customer data in the database")
         self.customer = self._map_customer(self.default_customer, None)
 
     def reset_session(self):
@@ -29,7 +29,7 @@ class DatabaseStore:
     def set_active_customer(self, customer_id, customer_name=None):
         customer = customer_dao.get_customer_by_id(customer_id)
         if not customer:
-            raise ValueError("客户不存在")
+            raise ValueError("Customer does not exist")
         self.customer = self._map_customer(customer, customer_name)
         self.cart.clear()
 
@@ -56,23 +56,23 @@ class DatabaseStore:
     def add_to_cart(self, product_id, quantity):
         quantity = int(quantity)
         if quantity <= 0:
-            raise ValueError("数量必须大于 0")
+            raise ValueError("The quantity must be greater than 0")
 
         product = self._get_product(product_id)
         if not product:
-            raise ValueError("商品不存在")
+            raise ValueError("Product does not exist")
 
         for item in self.cart:
             if item["product_id"] == product_id:
                 new_quantity = item["quantity"] + quantity
                 if new_quantity > product["stock"]:
-                    raise ValueError("库存不足")
+                    raise ValueError("Insufficient stock")
                 item["quantity"] = new_quantity
                 item["subtotal"] = round(item["quantity"] * item["price"], 2)
                 return item
 
         if quantity > product["stock"]:
-            raise ValueError("库存不足")
+            raise ValueError("Insufficient stock")
 
         item = {
             "product_id": product["id"],
@@ -135,7 +135,7 @@ class DatabaseStore:
     def _map_customer(row, customer_name):
         return {
             "id": row["customer_id"],
-            "name": customer_name or f'客户 {row["customer_id"]}',
+            "name": customer_name or f'Customer {row["customer_id"]}',
             "contact_num": row["contact_num"],
             "shipping_address": row["shipping_address"],
         }
