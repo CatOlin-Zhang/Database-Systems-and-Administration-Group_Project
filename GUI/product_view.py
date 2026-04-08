@@ -156,8 +156,8 @@ class ProductView(ttk.Frame):
 
         name = self.entries["Product Name"].get().strip()
         price = self.entries["Price"].get().strip()
-        stock = self.entries["Inventory"].get().strip()
-        tags_text = self.entries["Label"].get().strip()
+        stock = self.entries["Stock"].get().strip()
+        tags_text = self.entries["Tags"].get().strip()
 
         if self.app.is_supplier_mode():
             supplier_id = self.app.current_supplier_id
