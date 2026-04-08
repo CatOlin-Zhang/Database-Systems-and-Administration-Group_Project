@@ -15,12 +15,12 @@ from logic.app_service import DatabaseStore
 class AppWindow(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("电商平台演示")
+        self.title("E-commerce platform demonstration")
         self.geometry("1180x760")
         self.minsize(1080, 680)
 
         self.store = self._build_store()
-        self.status_var = tk.StringVar(value="就绪")
+        self.status_var = tk.StringVar(value="Ready")
         self.current_page = None
         self.current_user = None
         self.current_supplier_id = None
@@ -38,30 +38,30 @@ class AppWindow(tk.Tk):
             "admin": {
                 "password": "123456",
                 "role": "admin",
-                "name": "系统管理员",
+                "name": "admin",
             },
             "user1": {
                 "password": "123456",
                 "role": "client",
-                "name": "普通客户1",
+                "name": "user1",
                 "customer_id": 1,
             },
             "user2": {
                 "password": "123456",
                 "role": "client",
-                "name": "普通客户2",
+                "name": "user2",
                 "customer_id": 2,
             },
             "sup1": {
                 "password": "123456",
                 "role": "supplier",
-                "name": "晨光数码",
+                "name": "Chenguang Digital",
                 "supplier_id": 1,
             },
             "sup2": {
-                "password": "888888",
+                "password": "123456",
                 "role": "supplier",
-                "name": "北辰家居",
+                "name": "Beichen Home",
                 "supplier_id": 2,
             },
         }
@@ -85,50 +85,50 @@ class AppWindow(tk.Tk):
         self.rowconfigure(0, weight=1)
 
         self.nav_admin = ttk.Frame(self, padding=16)
-        ttk.Label(self.nav_admin, text="后台管理", font=("Microsoft YaHei UI", 18, "bold")).pack(
+        ttk.Label(self.nav_admin, text="Back-end Management", font=("Microsoft YaHei UI", 18, "bold")).pack(
             anchor="w", pady=(0, 18)
         )
         ttk.Button(
-            self.nav_admin, text="供应商管理", command=lambda: self.show_page("supplier"), width=18
+            self.nav_admin, text="Supplier Management", command=lambda: self.show_page("supplier"), width=18
         ).pack(fill="x", pady=4)
         ttk.Button(
-            self.nav_admin, text="商品目录", command=lambda: self.show_page("product"), width=18
+            self.nav_admin, text="Product Catalog", command=lambda: self.show_page("product"), width=18
         ).pack(fill="x", pady=4)
-        ttk.Button(self.nav_admin, text="退出登录", command=self.logout).pack(
+        ttk.Button(self.nav_admin, text="Log out", command=self.logout).pack(
             side="bottom", fill="x", pady=(20, 0)
         )
 
         self.nav_client = ttk.Frame(self, padding=16)
-        ttk.Label(self.nav_client, text="客户中心", font=("Microsoft YaHei UI", 18, "bold")).pack(
+        ttk.Label(self.nav_client, text="Customer Center", font=("Microsoft YaHei UI", 18, "bold")).pack(
             anchor="w", pady=(0, 18)
         )
         ttk.Button(
-            self.nav_client, text="商品搜索", command=lambda: self.show_page("search"), width=18
+            self.nav_client, text="Product Search", command=lambda: self.show_page("search"), width=18
         ).pack(fill="x", pady=4)
         ttk.Button(
-            self.nav_client, text="购物车", command=lambda: self.show_page("cart"), width=18
+            self.nav_client, text="Shopping Cart", command=lambda: self.show_page("cart"), width=18
         ).pack(fill="x", pady=4)
         ttk.Button(
-            self.nav_client, text="订单历史", command=lambda: self.show_page("order"), width=18
+            self.nav_client, text="Order History", command=lambda: self.show_page("order"), width=18
         ).pack(fill="x", pady=4)
-        ttk.Button(self.nav_client, text="退出登录", command=self.logout).pack(
+        ttk.Button(self.nav_client, text="Log out", command=self.logout).pack(
             side="bottom", fill="x", pady=(20, 0)
         )
 
         self.nav_supplier = ttk.Frame(self, padding=16)
         ttk.Label(
             self.nav_supplier,
-            text="供货商中心",
+            text="Supplier Center",
             font=("Microsoft YaHei UI", 18, "bold"),
             foreground="#d35400",
         ).pack(anchor="w", pady=(0, 18))
         ttk.Button(
-            self.nav_supplier, text="我的商品", command=lambda: self.show_page("product"), width=18
+            self.nav_supplier, text="My products", command=lambda: self.show_page("product"), width=18
         ).pack(fill="x", pady=4)
         ttk.Button(
-            self.nav_supplier, text="相关订单", command=lambda: self.show_page("order"), width=18
+            self.nav_supplier, text="Related orders", command=lambda: self.show_page("order"), width=18
         ).pack(fill="x", pady=4)
-        ttk.Button(self.nav_supplier, text="退出登录", command=self.logout).pack(
+        ttk.Button(self.nav_supplier, text="Log out", command=self.logout).pack(
             side="bottom", fill="x", pady=(20, 0)
         )
 
@@ -177,7 +177,7 @@ class AppWindow(tk.Tk):
         self.entry_container.grid(row=0, column=0, sticky="nsew")
         if hasattr(self.entry_view, "reset_form"):
             self.entry_view.reset_form()
-        self.status_var.set("请先登录系统")
+        self.status_var.set("Please log in to the system first")
 
     def switch_mode(self, role):
         self.entry_container.grid_forget()
@@ -203,7 +203,7 @@ class AppWindow(tk.Tk):
             self.show_page("product")
             return
 
-        messagebox.showerror("错误", "未知角色")
+        messagebox.showerror("Error", "Unknown character")
         self.logout()
 
     def logout(self):
@@ -219,7 +219,7 @@ class AppWindow(tk.Tk):
             return
 
         if not self.can_access_page(page_key):
-            messagebox.showwarning("提示", "当前角色无权访问该页面")
+            messagebox.showwarning("Notice", "The current role does not have permission to access this page")
             return
 
         if page_key in self.management_pages:
@@ -240,10 +240,10 @@ class AppWindow(tk.Tk):
         elif hasattr(frame, "refresh"):
             frame.refresh()
 
-        user_name = self.current_user.get("name", "未知")
-        self.status_var.set(f"当前用户：{user_name} | 页面：{self._page_title(page_key)}")
+        user_name = self.current_user.get("name", "Unknown")
+        self.status_var.set(f"Current User：{user_name} | Page：{self._page_title(page_key)}")
 
-    def refresh_views(self, message="已更新"):
+    def refresh_views(self, message="Updated"):
         for key, frame in self.pages.items():
             if not self.current_user or not self.can_access_page(key):
                 continue
@@ -290,10 +290,10 @@ class AppWindow(tk.Tk):
     @staticmethod
     def _page_title(page_key):
         mapping = {
-            "supplier": "供应商管理",
-            "product": "商品目录",
-            "search": "商品搜索",
-            "cart": "购物车",
-            "order": "订单历史",
+            "supplier": "Supplier Management",
+            "product": "Product Catalog",
+            "search": "Product Search",
+            "cart": "Shopping Cart",
+            "order": "Order History",
         }
         return mapping[page_key]

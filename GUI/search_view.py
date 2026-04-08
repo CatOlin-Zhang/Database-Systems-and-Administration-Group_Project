@@ -17,16 +17,16 @@ class SearchView(ttk.Frame):
         self.tree = self._build_layout()
 
     def _build_layout(self):
-        top = ttk.LabelFrame(self, text="搜索条件", padding=12)
+        top = ttk.LabelFrame(self, text="Search criteria", padding=12)
         top.grid(row=0, column=0, sticky="ew", pady=(0, 12))
 
-        ttk.Label(top, text="关键词").grid(row=0, column=0, sticky="w")
+        ttk.Label(top, text="Keyword").grid(row=0, column=0, sticky="w")
         ttk.Entry(top, textvariable=self.keyword_var, width=24).grid(row=0, column=1, padx=8)
-        ttk.Label(top, text="标签").grid(row=0, column=2, sticky="w")
+        ttk.Label(top, text="Label").grid(row=0, column=2, sticky="w")
         ttk.Entry(top, textvariable=self.tags_var, width=24).grid(row=0, column=3, padx=8)
-        ttk.Button(top, text="搜索", command=self.run_search).grid(row=0, column=4, padx=(8, 0))
+        ttk.Button(top, text="Search", command=self.run_search).grid(row=0, column=4, padx=(8, 0))
 
-        middle = ttk.LabelFrame(self, text="搜索结果", padding=12)
+        middle = ttk.LabelFrame(self, text="Search Results", padding=12)
         middle.grid(row=1, column=0, sticky="nsew")
         middle.columnconfigure(0, weight=1)
         middle.rowconfigure(0, weight=1)
@@ -34,11 +34,11 @@ class SearchView(ttk.Frame):
         columns = ("id", "name", "supplier", "price", "stock", "tags")
         tree = ttk.Treeview(middle, columns=columns, show="headings")
         tree.heading("id", text="ID")
-        tree.heading("name", text="商品名")
-        tree.heading("supplier", text="供应商")
-        tree.heading("price", text="价格")
-        tree.heading("stock", text="库存")
-        tree.heading("tags", text="标签")
+        tree.heading("name", text="Product Name")
+        tree.heading("supplier", text="Supplier")
+        tree.heading("price", text="Price")
+        tree.heading("stock", text="Inventory")
+        tree.heading("tags", text="Label")
         tree.column("id", width=60, anchor="center")
         tree.column("name", width=180)
         tree.column("supplier", width=150)
@@ -54,10 +54,10 @@ class SearchView(ttk.Frame):
         bottom = ttk.Frame(self, padding=(0, 12, 0, 0))
         bottom.grid(row=2, column=0, sticky="ew")
 
-        ttk.Label(bottom, text="购买数量").pack(side="left")
+        ttk.Label(bottom, text="Purchase Quantity").pack(side="left")
         self.qty_box = ttk.Spinbox(bottom, from_=1, to=99, textvariable=self.qty_var, width=8)
         self.qty_box.pack(side="left", padx=8)
-        self.add_button = ttk.Button(bottom, text="加入购物车", command=self.add_to_cart)
+        self.add_button = ttk.Button(bottom, text="Add to Cart", command=self.add_to_cart)
         self.add_button.pack(side="left")
         return tree
 
@@ -91,12 +91,12 @@ class SearchView(ttk.Frame):
 
     def add_to_cart(self):
         if not self.app.can_purchase():
-            messagebox.showwarning("提示", "当前账号不能加入购物车")
+            messagebox.showwarning("Notice", "The current account cannot add to the shopping cart")
             return
 
         selected = self.tree.selection()
         if not selected:
-            messagebox.showwarning("提示", "请先选择商品")
+            messagebox.showwarning("Notice", "Please select a product first")
             return
 
         try:
@@ -104,7 +104,7 @@ class SearchView(ttk.Frame):
             product_id = int(self.tree.item(selected[0], "values")[0])
             self.app.store.add_to_cart(product_id, quantity)
         except Exception as exc:
-            messagebox.showerror("错误", str(exc))
+            messagebox.showerror("Error", str(exc))
             return
 
-        self.app.refresh_views("已加入购物车")
+        self.app.refresh_views("Added to cart")

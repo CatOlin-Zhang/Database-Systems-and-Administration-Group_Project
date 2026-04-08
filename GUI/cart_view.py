@@ -10,22 +10,22 @@ class CartView(ttk.Frame):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        self.total_var = tk.StringVar(value="总价：0.00")
+        self.total_var = tk.StringVar(value="Total price：0.00")
         self.tree = self._build_layout()
 
     def _build_layout(self):
-        wrapper = ttk.LabelFrame(self, text="购物车", padding=12)
+        wrapper = ttk.LabelFrame(self, text="Shopping Cart", padding=12)
         wrapper.grid(row=0, column=0, sticky="nsew")
         wrapper.columnconfigure(0, weight=1)
         wrapper.rowconfigure(0, weight=1)
 
         columns = ("id", "name", "price", "quantity", "subtotal")
         tree = ttk.Treeview(wrapper, columns=columns, show="headings")
-        tree.heading("id", text="商品ID")
-        tree.heading("name", text="商品名")
-        tree.heading("price", text="单价")
-        tree.heading("quantity", text="数量")
-        tree.heading("subtotal", text="小计")
+        tree.heading("id", text="Product ID")
+        tree.heading("name", text="Product Name")
+        tree.heading("price", text="Unit price")
+        tree.heading("quantity", text="Amount")
+        tree.heading("subtotal", text="Total")
         tree.column("id", width=90, anchor="center")
         tree.column("name", width=220)
         tree.column("price", width=120, anchor="e")
@@ -43,11 +43,11 @@ class CartView(ttk.Frame):
         ttk.Label(bottom, textvariable=self.total_var, font=("Microsoft YaHei UI", 11, "bold")).pack(
             side="left"
         )
-        self.remove_button = ttk.Button(bottom, text="删除选中", command=self.remove_selected)
+        self.remove_button = ttk.Button(bottom, text="Delete Selected", command=self.remove_selected)
         self.remove_button.pack(side="right", padx=(8, 0))
-        self.clear_button = ttk.Button(bottom, text="清空购物车", command=self.clear_cart)
+        self.clear_button = ttk.Button(bottom, text="Empty the shopping cart", command=self.clear_cart)
         self.clear_button.pack(side="right", padx=(8, 0))
-        self.checkout_button = ttk.Button(bottom, text="提交订单", command=self.checkout)
+        self.checkout_button = ttk.Button(bottom, text="Submit Order", command=self.checkout)
         self.checkout_button.pack(side="right")
         return tree
 
@@ -73,39 +73,39 @@ class CartView(ttk.Frame):
         self.remove_button.configure(state=button_state)
         self.clear_button.configure(state=button_state)
         self.checkout_button.configure(state=button_state)
-        self.total_var.set(f'总价：{self.app.store.get_cart_total():.2f}')
+        self.total_var.set(f'Total：{self.app.store.get_cart_total():.2f}')
 
     def remove_selected(self):
         if not self.app.can_purchase():
-            messagebox.showwarning("提示", "当前账号不能修改购物车")
+            messagebox.showwarning("Notice", "The current account cannot modify the shopping cart")
             return
 
         selected = self.tree.selection()
         if not selected:
-            messagebox.showwarning("提示", "请先选择商品")
+            messagebox.showwarning("Notice", "Please select a product first")
             return
 
         product_id = int(self.tree.item(selected[0], "values")[0])
         self.app.store.remove_cart_item(product_id)
-        self.app.refresh_views("已移出购物车")
+        self.app.refresh_views("Removed from cart")
 
     def clear_cart(self):
         if not self.app.can_purchase():
-            messagebox.showwarning("提示", "当前账号不能修改购物车")
+            messagebox.showwarning("Notice", "The current account cannot modify the shopping cart")
             return
 
         self.app.store.clear_cart()
-        self.app.refresh_views("购物车已清空")
+        self.app.refresh_views("The shopping cart has been emptied")
 
     def checkout(self):
         if not self.app.can_purchase():
-            messagebox.showwarning("提示", "当前账号不能下单")
+            messagebox.showwarning("Notice", "The current account cannot place an order")
             return
 
         try:
             self.app.store.place_order(self.app.store.customer["id"])
         except Exception as exc:
-            messagebox.showerror("错误", str(exc))
+            messagebox.showerror("Error", str(exc))
             return
 
-        self.app.refresh_views("订单已创建")
+        self.app.refresh_views("The order has been created")

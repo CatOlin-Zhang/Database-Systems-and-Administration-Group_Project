@@ -95,3 +95,22 @@ CREATE TABLE transactions (
     CONSTRAINT fk_transaction_order FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
     CONSTRAINT fk_transaction_vendor FOREIGN KEY (vendor_id) REFERENCES vendors(vendor_id)
 );
+USE ecommerce_platform;
+
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE COMMENT 'Login Username',
+    password VARCHAR(50) NOT NULL COMMENT 'Login Password',
+    role ENUM('admin', 'customer', 'vendor') NOT NULL COMMENT 'User Role',
+    linked_id INT COMMENT 'Linked Business ID (customer_id or vendor_id)',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Foreign Key Constraints
+    -- Note: linked_id can be NULL for admins
+    CONSTRAINT fk_user_customer
+        FOREIGN KEY (linked_id) REFERENCES customers(customer_id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_user_vendor
+        FOREIGN KEY (linked_id) REFERENCES vendors(vendor_id)
+        ON DELETE CASCADE
+);
